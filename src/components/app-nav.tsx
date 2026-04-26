@@ -6,6 +6,7 @@ import {
   House,
   CalendarDays,
   ClipboardList,
+  ClipboardCheck,
   KeyRound,
   ListChecks,
   NotebookPen,
@@ -18,6 +19,7 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/calendar", icon: CalendarDays, label: "Calendar" },
+  { href: "/setup", icon: ClipboardCheck, label: "Setup" },
   { href: "/planner", icon: NotebookPen, label: "Planner" },
   { href: "/recipes", icon: BookOpen, label: "Recipes" },
   { href: "/meal-memory", icon: Brain, label: "Memory" },

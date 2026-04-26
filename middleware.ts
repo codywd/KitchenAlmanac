@@ -10,6 +10,7 @@ const protectedPrefixes = [
   "/import",
   "/ingredients",
   "/rejected-meals",
+  "/setup",
   "/weeks",
 ];
 
@@ -42,6 +43,7 @@ export const config = {
     "/import/:path*",
     "/ingredients/:path*",
     "/rejected-meals/:path*",
+    "/setup/:path*",
     "/weeks/:path*",
   ],
 };

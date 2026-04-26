@@ -6,6 +6,7 @@ import {
   CircleDashed,
   ClipboardCheck,
   ClipboardList,
+  Rocket,
   ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,6 +19,7 @@ import { MealVoteSummary } from "@/components/meal-vote-panel";
 import { addDays, formatDisplayDate, formatMoney, startOfMealPlanWeek, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import { loadSetupStatus } from "@/lib/setup";
 
 export const dynamic = "force-dynamic";
 
@@ -43,38 +45,46 @@ export default async function CalendarPage() {
   const context = await requireFamilyContext("/calendar");
   const canManage = canManagePlans(context.role);
   const currentWeekStart = startOfMealPlanWeek();
-  const weeks = await getDb().week.findMany({
-    include: {
-      days: {
-        include: {
-          dinner: {
-            include: {
-              votes: {
-                include: {
-                  user: {
-                    select: {
-                      email: true,
-                      name: true,
+  const [weeks, setupStatus] = await Promise.all([
+    getDb().week.findMany({
+      include: {
+        days: {
+          include: {
+            dinner: {
+              include: {
+                votes: {
+                  include: {
+                    user: {
+                      select: {
+                        email: true,
+                        name: true,
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-        orderBy: {
-          date: "asc",
+          orderBy: {
+            date: "asc",
+          },
         },
       },
-    },
-    orderBy: {
-      weekStart: "desc",
-    },
-    take: 8,
-    where: {
-      familyId: context.family.id,
-    },
-  });
+      orderBy: {
+        weekStart: "desc",
+      },
+      take: 8,
+      where: {
+        familyId: context.family.id,
+      },
+    }),
+    canManage
+      ? loadSetupStatus({
+          canManage,
+          familyId: context.family.id,
+        })
+      : Promise.resolve(null),
+  ]);
   const selectedWeek =
     weeks.find((week) => toDateOnly(week.weekStart) === toDateOnly(currentWeekStart)) ??
     weeks[0];
@@ -146,6 +156,26 @@ export default async function CalendarPage() {
           The app stores the plan and feedback. The outside LLM reads the household
           guidance and writes meals through authenticated API calls.
         </PageIntro>
+
+      {setupStatus && !setupStatus.isLaunchReady ? (
+        <Section
+          description={`${setupStatus.completedRequiredCount}/${setupStatus.requiredCount} required setup checks complete.`}
+          title="Finish Setup"
+        >
+          <div className="ka-panel flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <p className="text-sm font-semibold leading-6 text-[var(--muted-ink)]">
+                Complete the production checklist before relying on weekly
+                planning: guidance, API access, and the first imported week.
+              </p>
+            </div>
+            <Link className="ka-button gap-2" href="/setup">
+              <Rocket size={16} />
+              Open setup
+            </Link>
+          </div>
+        </Section>
+      ) : null}
 
       <Section
         description="Direct visits land here after login. Days fill in as the API stores dinner plans."

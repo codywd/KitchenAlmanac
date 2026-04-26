@@ -1,27 +1,23 @@
 import { PrismaClient } from "@prisma/client";
 
 import { hashPassword } from "../src/lib/auth";
+import { readSeedConfig } from "../src/lib/seed-config";
 import { loadSkillReferenceDocuments } from "../src/lib/seed-documents";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const skillDir =
-    process.env.KITCHEN_ALMANAC_SKILL_DIR ??
-    "/Users/cdostal/Downloads/Skills/KitchenAlmanac";
-  const adminEmail = process.env.ADMIN_EMAIL ?? "cody@example.local";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "change-me-kitchenalmanac";
-  const familyName = process.env.ADMIN_FAMILY_NAME ?? "KitchenAlmanac Household";
+  const seedConfig = readSeedConfig();
 
   const admin = await prisma.user.upsert({
     create: {
-      email: adminEmail,
+      email: seedConfig.adminEmail,
       name: "Household Admin",
-      passwordHash: await hashPassword(adminPassword),
+      passwordHash: await hashPassword(seedConfig.adminPassword),
     },
     update: {},
     where: {
-      email: adminEmail,
+      email: seedConfig.adminEmail,
     },
   });
 
@@ -43,10 +39,10 @@ async function main() {
             userId: admin.id,
           },
         },
-        name: familyName,
+        name: seedConfig.familyName,
       },
     }));
-  const documents = await loadSkillReferenceDocuments(skillDir);
+  const documents = await loadSkillReferenceDocuments(seedConfig.skillDir);
 
   for (const document of documents) {
     await prisma.householdDocument.upsert({
@@ -67,9 +63,9 @@ async function main() {
     });
   }
 
-  console.log(`Seeded KitchenAlmanac documents and admin user: ${adminEmail}`);
+  console.log(`Seeded KitchenAlmanac documents and admin user: ${seedConfig.adminEmail}`);
   console.log(`Seeded family: ${family.name}`);
-  if (!process.env.ADMIN_PASSWORD) {
+  if (!process.env.ADMIN_PASSWORD && !seedConfig.isProductionSeed) {
     console.log("Default dev password: change-me-kitchenalmanac");
   }
 }

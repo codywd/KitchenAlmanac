@@ -33,6 +33,27 @@ Default seeded login:
 
 Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` before seeding to override this.
 
+## Production Setup
+
+Production deployment applies migrations through Vercel's build command:
+
+```bash
+prisma migrate deploy && next build
+```
+
+Do not run `npm run db:seed` in production unless you are intentionally creating
+the first owner and guidance documents. The seed script refuses production
+defaults unless all of these are set:
+
+- `ALLOW_PRODUCTION_SEED=true`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `KITCHEN_ALMANAC_SKILL_DIR`
+
+After the first owner signs in, open `/setup` to check launch readiness: family
+owner, guidance documents, API access, and the first imported week. The calendar
+shows a setup prompt for owners/admins until those required checks are complete.
+
 ## Families, Roles, And Voting
 
 Meal plans belong to a family. The first seeded user becomes the family owner, and `/family` lets owners/admins add more members by email with a temporary password.
