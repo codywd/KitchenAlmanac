@@ -215,6 +215,36 @@ describe("planning session actions", () => {
     ).rejects.toThrow("Only family owners and admins can manage meal plans.");
   });
 
+  it("repairs common LLM JSON formatting before saving returned plans", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    const result = await savePlanningSessionPlanAction(
+      {},
+      formData({
+        budgetTargetCents: "35000",
+        localNotes: "",
+        planJsonText: "{“recipes”:[{“dinner_title”:“Bowls”}]}",
+        promptMarkdown: "# Meal Planning Brief",
+        weekStart: "2026-05-04",
+      }),
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(db.planningSession.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          planJsonText: '{"recipes":[{"dinner_title":"Bowls"}]}',
+          status: "PLAN_PASTED",
+        }),
+        update: expect.objectContaining({
+          planJsonText: '{"recipes":[{"dinner_title":"Bowls"}]}',
+          status: "PLAN_PASTED",
+        }),
+      }),
+    );
+  });
+
   it("saves invalid returned JSON but refuses to import it", async () => {
     const { db } = makeDb({
       foundSession: makeSession({

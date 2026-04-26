@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-export const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+import { isValidDateOnly } from "./dates";
+
+export const dateOnlySchema = z
+  .string()
+  .refine(isValidDateOnly, "Date must be a valid YYYY-MM-DD date.");
 
 export const familyRoleSchema = z.enum(["OWNER", "ADMIN", "MEMBER"]);
 export const householdDocumentKindSchema = z.enum([

@@ -15,6 +15,7 @@ import {
   type ImportReview,
   type ImportReviewContext,
 } from "@/lib/import-review";
+import { parseJsonWithRepair } from "@/lib/json-repair";
 
 const initialState: ImportMealPlanActionState = {};
 
@@ -40,15 +41,21 @@ export function RecipeImportForm({
   function previewPlan() {
     try {
       const parsedWeekStart = parseDateOnly(weekStart);
-      const plan = JSON.parse(planJson) as unknown;
+      const parsed = parseJsonWithRepair(planJson);
+      const nextPlanJson = parsed.text;
+      const nextReviewKey = `${weekStart}\n${nextPlanJson}`;
       const nextReview = buildImportReview({
         context: reviewContext,
-        plan,
+        plan: parsed.value,
         weekStart: parsedWeekStart,
       });
 
+      if (parsed.repaired) {
+        setPlanJson(nextPlanJson);
+      }
+
       setReview(nextReview);
-      setReviewedKey(reviewKey);
+      setReviewedKey(nextReviewKey);
       setReviewError(null);
     } catch (error) {
       setReview(null);

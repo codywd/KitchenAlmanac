@@ -6,6 +6,7 @@ import { parseDateOnly, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { assertCanManagePlans, requireFamilyContext } from "@/lib/family";
 import { buildImportReview, toImportReviewContext } from "@/lib/import-review";
+import { parseJsonWithRepair } from "@/lib/json-repair";
 import {
   getLatestFamilyBudgetTargetCents,
   loadPlanningBriefContext,
@@ -78,6 +79,14 @@ function revalidatePlanningSessionSurfaces(weekId?: string) {
   }
 }
 
+function repairPlanJsonTextIfPossible(value: string) {
+  try {
+    return parseJsonWithRepair(value).text;
+  } catch {
+    return value;
+  }
+}
+
 export async function savePlanningSessionPromptAction(
   _previousState: PlanningSessionActionState,
   formData: FormData,
@@ -137,7 +146,9 @@ export async function savePlanningSessionPlanAction(
 
   try {
     const fields = readSessionFields(formData);
-    const planJsonText = readText(formData, "planJsonText").trim();
+    const planJsonText = repairPlanJsonTextIfPossible(
+      readText(formData, "planJsonText").trim(),
+    );
 
     if (!planJsonText) {
       throw new Error("Paste the returned weekly JSON before saving.");
@@ -216,7 +227,7 @@ export async function importPlanningSessionAction(
     let plan: unknown;
 
     try {
-      plan = JSON.parse(session.planJsonText);
+      plan = parseJsonWithRepair(session.planJsonText).value;
     } catch {
       throw new Error("Returned weekly JSON must be valid JSON before importing.");
     }

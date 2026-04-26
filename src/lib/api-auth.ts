@@ -1,6 +1,10 @@
 import { hashApiKey } from "./auth";
 import { getDb } from "./db";
-import { getFamilyContextForUser, type FamilyContext } from "./family";
+import {
+  canManageApiKeys,
+  getFamilyContextForUser,
+  type FamilyContext,
+} from "./family";
 import { getCurrentUser, type CurrentUser } from "./session";
 
 export type AuthenticatedRequest = {
@@ -34,6 +38,12 @@ export async function authenticateRequest(
         createdBy: {
           select: {
             email: true,
+            familyMembership: {
+              select: {
+                familyId: true,
+                role: true,
+              },
+            },
             id: true,
             name: true,
           },
@@ -53,6 +63,18 @@ export async function authenticateRequest(
     });
 
     if (!key) {
+      return null;
+    }
+
+    const creatorMembership = key.createdBy?.familyMembership;
+
+    if (
+      !key.createdByUserId ||
+      !key.createdBy ||
+      !creatorMembership ||
+      creatorMembership.familyId !== key.familyId ||
+      !canManageApiKeys(creatorMembership.role)
+    ) {
       return null;
     }
 

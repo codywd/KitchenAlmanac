@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import {
   assertCanManageFamily,
   canChangeMemberRole,
+  canManageApiKeys,
   canManageOwnerRoles,
   canRemoveMember,
   canResetMemberPassword,
@@ -67,26 +68,24 @@ export async function addFamilyMemberAction(
         throw new Error("That user already belongs to another family.");
       }
 
-      const user =
-        existingUser ??
-        (await tx.user.create({
-          data: {
-            email: payload.email,
-            name: payload.name || null,
-            passwordHash: await hashPassword(payload.password),
-          },
-        }));
-
-      if (existingUser && payload.name) {
-        await tx.user.update({
-          data: {
-            name: payload.name,
-          },
-          where: {
-            id: existingUser.id,
-          },
-        });
-      }
+      const passwordHash = await hashPassword(payload.password);
+      const user = existingUser
+        ? await tx.user.update({
+            data: {
+              ...(payload.name ? { name: payload.name } : {}),
+              passwordHash,
+            },
+            where: {
+              id: existingUser.id,
+            },
+          })
+        : await tx.user.create({
+            data: {
+              email: payload.email,
+              name: payload.name || null,
+              passwordHash,
+            },
+          });
 
       await tx.familyMember.create({
         data: {
@@ -141,13 +140,28 @@ export async function updateFamilyMemberRoleAction(formData: FormData) {
     throw new Error("You cannot make that role change.");
   }
 
-  await getDb().familyMember.update({
-    data: {
-      role: payload.role,
-    },
-    where: {
-      id: member.id,
-    },
+  await getDb().$transaction(async (tx) => {
+    await tx.familyMember.update({
+      data: {
+        role: payload.role,
+      },
+      where: {
+        id: member.id,
+      },
+    });
+
+    if (canManageApiKeys(member.role) && !canManageApiKeys(payload.role)) {
+      await tx.apiKey.updateMany({
+        data: {
+          revokedAt: new Date(),
+        },
+        where: {
+          createdByUserId: member.userId,
+          familyId: context.family.id,
+          revokedAt: null,
+        },
+      });
+    }
   });
 
   revalidatePath("/family");
@@ -249,6 +263,16 @@ export async function removeFamilyMemberAction(formData: FormData) {
     await tx.session.deleteMany({
       where: {
         userId: member.user.id,
+      },
+    });
+    await tx.apiKey.updateMany({
+      data: {
+        revokedAt: new Date(),
+      },
+      where: {
+        createdByUserId: member.user.id,
+        familyId: context.family.id,
+        revokedAt: null,
       },
     });
     await tx.familyMember.delete({

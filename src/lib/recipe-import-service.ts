@@ -1,7 +1,41 @@
 import { Prisma } from "@prisma/client";
 
+import { addDays, toDateOnly } from "./dates";
 import { getDb } from "./db";
 import { normalizeImportedMealPlan } from "./recipe-import";
+
+function assertNoImportPersistenceBlockers(
+  normalized: ReturnType<typeof normalizeImportedMealPlan>,
+  weekStart: Date,
+) {
+  const weekStartText = toDateOnly(weekStart);
+  const weekEndText = toDateOnly(addDays(weekStart, 6));
+  const seenDates = new Map<string, string>();
+  const blockers: string[] = [];
+
+  for (const imported of normalized.meals) {
+    const dateText = toDateOnly(imported.date);
+    const previousMealName = seenDates.get(dateText);
+
+    if (previousMealName) {
+      blockers.push(
+        `Duplicate Dinner Date: ${imported.meal.name} lands on ${dateText}, already used by ${previousMealName}.`,
+      );
+    }
+
+    seenDates.set(dateText, imported.meal.name);
+
+    if (dateText < weekStartText || dateText > weekEndText) {
+      blockers.push(
+        `Dinner Outside Target Week: ${imported.meal.name} maps to ${dateText}, outside ${weekStartText} through ${weekEndText}.`,
+      );
+    }
+  }
+
+  if (blockers.length) {
+    throw new Error(`Resolve import blockers before saving: ${blockers.join(" ")}`);
+  }
+}
 
 export async function importMealPlanForFamily({
   familyId,
@@ -13,6 +47,7 @@ export async function importMealPlanForFamily({
   weekStart: Date;
 }) {
   const normalized = normalizeImportedMealPlan({ plan, weekStart });
+  assertNoImportPersistenceBlockers(normalized, weekStart);
   const db = getDb();
 
   return db.$transaction(async (tx) => {

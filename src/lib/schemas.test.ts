@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createWeekSchema,
   familyMemberCreateSchema,
   familyMemberPasswordResetSchema,
   familyMemberRemoveSchema,
@@ -18,6 +19,14 @@ import {
 } from "./schemas";
 
 describe("multi-user schemas", () => {
+  it("rejects impossible date-only values", () => {
+    expect(
+      createWeekSchema.safeParse({
+        weekStart: "2026-02-31",
+      }).success,
+    ).toBe(false);
+  });
+
   it("normalizes family-member email and accepts the managed roles", () => {
     const parsed = familyMemberCreateSchema.parse({
       email: "NEW@EXAMPLE.LOCAL",

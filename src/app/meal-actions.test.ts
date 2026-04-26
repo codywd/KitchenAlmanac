@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { replaceDinnerFromRecipeAction } from "./meal-actions";
+import { createRejectedMealAction, replaceDinnerFromRecipeAction } from "./meal-actions";
 
 const actionState = vi.hoisted(() => ({
   context: {
@@ -70,6 +70,11 @@ function makeDb({
     $transaction: vi.fn(async (callback: (tx: typeof tx) => Promise<unknown>) =>
       callback(tx),
     ),
+    rejectedMeal: {
+      create: vi.fn(async () => ({
+        id: "rejected_1",
+      })),
+    },
     week: {
       findFirst: vi.fn(async () => week),
     },
@@ -186,6 +191,52 @@ describe("replaceDinnerFromRecipeAction", () => {
         "/weeks/week_1",
         "/weeks/week_1/review",
       ]),
+    );
+  });
+});
+
+describe("createRejectedMealAction", () => {
+  beforeEach(() => {
+    actionState.context.role = "OWNER";
+    actionState.db = makeDb().db;
+    actionState.revalidated = [];
+  });
+
+  it("rejects blank tampered submissions before writing", async () => {
+    await expect(
+      createRejectedMealAction(
+        formData({
+          mealName: "   ",
+          patternToAvoid: "   ",
+          reason: "   ",
+        }),
+      ),
+    ).rejects.toThrow("Enter a meal name, reason, and pattern to avoid.");
+
+    expect(actionState.db?.rejectedMeal.create).not.toHaveBeenCalled();
+  });
+
+  it("persists valid rejected meal submissions with trimmed values", async () => {
+    await createRejectedMealAction(
+      formData({
+        mealName: "  Fish Tacos  ",
+        patternToAvoid: "  fish-forward dinners  ",
+        reason: "  Allergy constraint  ",
+      }),
+    );
+
+    expect(actionState.db?.rejectedMeal.create).toHaveBeenCalledWith({
+      data: {
+        active: true,
+        createdByUserId: "user_owner",
+        familyId: "family_1",
+        mealName: "Fish Tacos",
+        patternToAvoid: "fish-forward dinners",
+        reason: "Allergy constraint",
+      },
+    });
+    expect(actionState.revalidated).toEqual(
+      expect.arrayContaining(["/rejected-meals", "/meal-memory"]),
     );
   });
 });

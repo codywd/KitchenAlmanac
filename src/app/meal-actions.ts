@@ -19,8 +19,10 @@ import {
   getLatestFamilyBudgetTargetCents,
   loadPlanningBriefContext,
 } from "@/lib/planning-brief";
+import { parseJsonWithRepair } from "@/lib/json-repair";
 import { normalizeImportedRecipe } from "@/lib/recipe-import";
 import { importMealPlanForFamily } from "@/lib/recipe-import-service";
+import { rejectedMealCreateSchema } from "@/lib/schemas";
 
 export type ApiKeyActionState = {
   error?: string;
@@ -149,14 +151,21 @@ export async function recordFeedbackAction(formData: FormData) {
 export async function createRejectedMealAction(formData: FormData) {
   const context = await requireFamilyContext();
   assertCanManagePlans(context.role);
+  const parsed = rejectedMealCreateSchema.safeParse({
+    mealName: String(formData.get("mealName") ?? "").trim(),
+    patternToAvoid: String(formData.get("patternToAvoid") ?? "").trim(),
+    reason: String(formData.get("reason") ?? "").trim(),
+  });
+
+  if (!parsed.success) {
+    throw new Error("Enter a meal name, reason, and pattern to avoid.");
+  }
 
   await getDb().rejectedMeal.create({
     data: {
+      ...parsed.data,
       createdByUserId: context.user.id,
       familyId: context.family.id,
-      mealName: String(formData.get("mealName") ?? "").trim(),
-      patternToAvoid: String(formData.get("patternToAvoid") ?? "").trim(),
-      reason: String(formData.get("reason") ?? "").trim(),
     },
   });
 
@@ -184,7 +193,7 @@ export async function toggleRejectedMealAction(formData: FormData) {
 
 function parseRecipeJson(value: string) {
   try {
-    return JSON.parse(value) as unknown;
+    return parseJsonWithRepair(value).value;
   } catch {
     throw new Error("Could not parse the replacement recipe JSON.");
   }
@@ -385,7 +394,7 @@ export async function importMealPlanAction(
   const planJson = String(formData.get("planJson") ?? "");
 
   try {
-    const plan = JSON.parse(planJson) as unknown;
+    const plan = parseJsonWithRepair(planJson).value;
     const reviewContext = toImportReviewContext({
       budgetTargetCents: await getLatestFamilyBudgetTargetCents(context.family.id),
       planningContext: await loadPlanningBriefContext({

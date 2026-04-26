@@ -16,6 +16,7 @@ import {
   type ImportReview,
   type ImportReviewContext,
 } from "@/lib/import-review";
+import { parseJsonWithRepair } from "@/lib/json-repair";
 import {
   buildPlanningSessionPrompt,
   type PlanningSessionView,
@@ -173,15 +174,21 @@ export function PlanningSessionWorkspace({
 
   function previewPlan() {
     try {
-      const plan = JSON.parse(planJsonText) as unknown;
+      const parsed = parseJsonWithRepair(planJsonText);
+      const nextPlanJsonText = parsed.text;
+      const nextReviewKey = `${weekStart}\n${nextPlanJsonText}`;
       const nextReview = buildImportReview({
         context: reviewContext,
-        plan,
+        plan: parsed.value,
         weekStart: new Date(`${weekStart}T00:00:00.000Z`),
       });
 
+      if (parsed.repaired) {
+        setPlanJsonText(nextPlanJsonText);
+      }
+
       setReview(nextReview);
-      setReviewedKey(reviewKey);
+      setReviewedKey(nextReviewKey);
       setReviewError(null);
     } catch (error) {
       setReview(null);

@@ -171,13 +171,11 @@ export function defaultPlanningWeekStart(now = new Date()) {
 }
 
 function parseStrictDateOnly(value: string, paramName: string) {
-  const date = parseDateOnly(value);
-
-  if (Number.isNaN(date.getTime()) || toDateOnly(date) !== value) {
+  try {
+    return parseDateOnly(value);
+  } catch {
     throw new Error(`${paramName} must be a valid YYYY-MM-DD date.`);
   }
-
-  return date;
 }
 
 export function parsePlanningBriefQuery(

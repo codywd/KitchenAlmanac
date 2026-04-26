@@ -2,6 +2,7 @@ import { authenticateRequest } from "@/lib/api-auth";
 import { parseDateOnly, startOfMealPlanWeek } from "@/lib/dates";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, unauthorized } from "@/lib/http";
+import { parseJsonWithRepair } from "@/lib/json-repair";
 import { importMealPlanForFamily } from "@/lib/recipe-import-service";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    const body = parseJsonWithRepair(await request.text()).value;
     const { plan, weekStart } = splitImportBody(body, request);
     const result = await importMealPlanForFamily({
       familyId: auth.family.id,
