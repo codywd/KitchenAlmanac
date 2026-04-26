@@ -10,6 +10,7 @@ const sessionDays = 30;
 export type CurrentUser = {
   email: string;
   id: string;
+  mustChangePassword: boolean;
   name: string | null;
 };
 
@@ -24,7 +25,7 @@ export async function createSessionForUser(userId: string) {
   const token = createSessionToken();
   const expiresAt = sessionExpiry();
 
-  await getDb().session.create({
+  const session = await getDb().session.create({
     data: {
       expiresAt,
       tokenHash: hashSessionToken(token),
@@ -32,7 +33,7 @@ export async function createSessionForUser(userId: string) {
     },
   });
 
-  return { expiresAt, token };
+  return { expiresAt, id: session.id, token };
 }
 
 export async function setSessionCookie(token: string, expiresAt: Date) {
@@ -41,6 +42,8 @@ export async function setSessionCookie(token: string, expiresAt: Date) {
   cookieStore.set(sessionCookieName, token, {
     expires: expiresAt,
     httpOnly: true,
+    maxAge: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+    path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
@@ -61,6 +64,28 @@ export async function clearSessionCookie() {
   cookieStore.delete(sessionCookieName);
 }
 
+export async function replaceSessionsForUser(userId: string) {
+  const session = await createSessionForUser(userId);
+
+  await getDb().session.deleteMany({
+    where: {
+      id: {
+        not: session.id,
+      },
+      userId,
+    },
+  });
+  await setSessionCookie(session.token, session.expiresAt);
+}
+
+export async function deleteSessionsForUser(userId: string) {
+  await getDb().session.deleteMany({
+    where: {
+      userId,
+    },
+  });
+}
+
 export async function getUserForSessionToken(
   token?: string | null,
 ): Promise<CurrentUser | null> {
@@ -74,6 +99,7 @@ export async function getUserForSessionToken(
         select: {
           email: true,
           id: true,
+          mustChangePassword: true,
           name: true,
         },
       },
@@ -109,6 +135,14 @@ export async function requireCurrentUser(returnTo = "/calendar") {
 
   if (!user) {
     redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+
+  if (
+    user.mustChangePassword &&
+    returnTo !== "/account" &&
+    !returnTo.startsWith("/account?")
+  ) {
+    redirect("/account?mustChangePassword=1");
   }
 
   return user;

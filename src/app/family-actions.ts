@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { recordAuditEvent } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import {
@@ -13,12 +14,14 @@ import {
   canResetMemberPassword,
   requireFamilyContext,
 } from "@/lib/family";
+import { getActionRequestMetadata } from "@/lib/request-context";
 import {
   familyMemberCreateSchema,
   familyMemberPasswordResetSchema,
   familyMemberRemoveSchema,
   familyMemberRoleUpdateSchema,
 } from "@/lib/schemas";
+import { deleteSessionsForUser } from "@/lib/session";
 
 export type FamilyMemberActionState = {
   error?: string;
@@ -30,6 +33,7 @@ export async function addFamilyMemberAction(
   formData: FormData,
 ): Promise<FamilyMemberActionState> {
   const context = await requireFamilyContext("/family");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManageFamily(context.role);
 
   const parsed = familyMemberCreateSchema.safeParse({
@@ -73,6 +77,7 @@ export async function addFamilyMemberAction(
         ? await tx.user.update({
             data: {
               ...(payload.name ? { name: payload.name } : {}),
+              mustChangePassword: true,
               passwordHash,
             },
             where: {
@@ -82,6 +87,7 @@ export async function addFamilyMemberAction(
         : await tx.user.create({
             data: {
               email: payload.email,
+              mustChangePassword: true,
               name: payload.name || null,
               passwordHash,
             },
@@ -97,8 +103,31 @@ export async function addFamilyMemberAction(
     });
 
     revalidatePath("/family");
+    await recordAuditEvent({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      metadata: {
+        email: payload.email,
+        role: payload.role,
+      },
+      outcome: "success",
+      requestMeta,
+      subjectType: "family-member",
+      type: "family.member_add",
+    });
     return { message: `Added ${payload.email} to ${context.family.name}.` };
   } catch (error) {
+    await recordAuditEvent({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      metadata: {
+        email: payload.email,
+      },
+      outcome: "failure",
+      requestMeta,
+      subjectType: "family-member",
+      type: "family.member_add",
+    });
     return {
       error:
         error instanceof Error
@@ -110,6 +139,7 @@ export async function addFamilyMemberAction(
 
 export async function updateFamilyMemberRoleAction(formData: FormData) {
   const context = await requireFamilyContext("/family");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManageFamily(context.role);
   const payload = familyMemberRoleUpdateSchema.parse({
     memberId: formData.get("memberId"),
@@ -165,10 +195,24 @@ export async function updateFamilyMemberRoleAction(formData: FormData) {
   });
 
   revalidatePath("/family");
+  await recordAuditEvent({
+    actorUserId: context.user.id,
+    familyId: context.family.id,
+    metadata: {
+      nextRole: payload.role,
+      previousRole: member.role,
+    },
+    outcome: "success",
+    requestMeta,
+    subjectId: member.userId,
+    subjectType: "family-member",
+    type: "family.member_role_change",
+  });
 }
 
 export async function resetFamilyMemberPasswordAction(formData: FormData) {
   const context = await requireFamilyContext("/family");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManageFamily(context.role);
   const payload = familyMemberPasswordResetSchema.parse({
     memberId: formData.get("memberId"),
@@ -200,18 +244,30 @@ export async function resetFamilyMemberPasswordAction(formData: FormData) {
 
   await getDb().user.update({
     data: {
+      mustChangePassword: true,
       passwordHash: await hashPassword(payload.password),
     },
     where: {
       id: member.user.id,
     },
   });
+  await deleteSessionsForUser(member.user.id);
 
   revalidatePath("/family");
+  await recordAuditEvent({
+    actorUserId: context.user.id,
+    familyId: context.family.id,
+    outcome: "success",
+    requestMeta,
+    subjectId: member.user.id,
+    subjectType: "user",
+    type: "auth.password_reset",
+  });
 }
 
 export async function removeFamilyMemberAction(formData: FormData) {
   const context = await requireFamilyContext("/family");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManageFamily(context.role);
   const payload = familyMemberRemoveSchema.parse({
     memberId: formData.get("memberId"),
@@ -283,4 +339,13 @@ export async function removeFamilyMemberAction(formData: FormData) {
   });
 
   revalidatePath("/family");
+  await recordAuditEvent({
+    actorUserId: context.user.id,
+    familyId: context.family.id,
+    outcome: "success",
+    requestMeta,
+    subjectId: member.user.id,
+    subjectType: "family-member",
+    type: "family.member_remove",
+  });
 }

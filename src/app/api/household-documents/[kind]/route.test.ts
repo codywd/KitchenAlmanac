@@ -24,6 +24,17 @@ vi.mock("@/lib/api-auth", () => ({
   authenticateRequest: vi.fn(async () => routeState.auth),
 }));
 
+vi.mock("@/lib/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/rate-limit")>(
+    "@/lib/rate-limit",
+  );
+
+  return {
+    ...actual,
+    assertRateLimit: vi.fn(async () => undefined),
+  };
+});
+
 vi.mock("@/lib/household-documents", () => service);
 
 vi.mock("next/cache", () => ({

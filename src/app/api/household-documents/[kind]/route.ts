@@ -1,9 +1,14 @@
 import { revalidatePath } from "next/cache";
 
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { canManageGuidance } from "@/lib/family";
 import { badRequest, forbidden, json, unauthorized } from "@/lib/http";
 import { upsertHouseholdDocumentForFamily } from "@/lib/household-documents";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import {
   householdDocumentKindSchema,
   householdDocumentUpsertSchema,
@@ -28,7 +33,23 @@ export async function PUT(
   try {
     const { kind } = await context.params;
     const parsedKind = householdDocumentKindSchema.parse(kind);
-    const payload = householdDocumentUpsertSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "guidance-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = householdDocumentUpsertSchema.parse(
+      await readJsonWithLimit(request),
+    );
     const document = await upsertHouseholdDocumentForFamily({
       content: payload.content,
       familyId: auth.family.id,

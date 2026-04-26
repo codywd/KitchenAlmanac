@@ -1,3 +1,9 @@
 {
-  "buildCommand": "prisma migrate deploy && next build"
+  "buildCommand": "prisma migrate deploy && next build",
+  "crons": [
+    {
+      "path": "/api/ops/maintenance",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }

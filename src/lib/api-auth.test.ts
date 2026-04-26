@@ -48,9 +48,16 @@ function apiKey({
 
 function makeDb() {
   const db = {
+    auditEvent: {
+      create: vi.fn(async () => ({ id: "audit_1" })),
+    },
     apiKey: {
       findFirst: vi.fn(async () => authState.key),
       update: vi.fn(async () => authState.key),
+    },
+    rateLimitBucket: {
+      findUnique: vi.fn(async () => null),
+      upsert: vi.fn(async () => ({ id: "bucket_1" })),
     },
   };
 

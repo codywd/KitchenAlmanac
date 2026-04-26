@@ -1,7 +1,12 @@
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { getDb } from "@/lib/db";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { mealPatchData } from "@/lib/meal-mapping";
 import { mealPatchSchema } from "@/lib/schemas";
 
@@ -23,7 +28,21 @@ export async function PATCH(
 
   try {
     const { mealId } = await context.params;
-    const payload = mealPatchSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "meal-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = mealPatchSchema.parse(await readJsonWithLimit(request));
     const existing = await getDb().meal.findFirst({
       where: {
         id: mealId,

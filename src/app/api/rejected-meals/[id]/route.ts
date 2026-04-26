@@ -1,7 +1,12 @@
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { getDb } from "@/lib/db";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { rejectedMealPatchSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +27,21 @@ export async function PATCH(
 
   try {
     const { id } = await context.params;
-    const payload = rejectedMealPatchSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "rejected-meal-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = rejectedMealPatchSchema.parse(await readJsonWithLimit(request));
     const existing = await getDb().rejectedMeal.findFirst({
       where: {
         familyId: auth.family.id,

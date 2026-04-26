@@ -4,8 +4,13 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
 import { upsertMealVoteForFamily } from "@/lib/meal-votes-api";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { mealVoteSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -28,8 +33,22 @@ export async function POST(
 
   try {
     const { mealId } = await context.params;
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "meal-vote-write-api",
+        subject: `${auth.family.id}:${userId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
     const payload = mealVoteSchema.parse({
-      ...(await request.json()),
+      ...(await readJsonWithLimit(request)),
       mealId,
     });
     const mealVote = await upsertMealVoteForFamily({

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   Brain,
   BookOpen,
   House,
@@ -36,6 +37,7 @@ const navItems = [
   { href: "/api-keys", icon: KeyRound, label: "API keys" },
   { href: "/household", icon: ShieldCheck, label: "Guidance" },
   { href: "/family", icon: House, label: "Family" },
+  { adminOnly: true, href: "/ops", icon: Activity, label: "Ops" },
   { href: "/account", icon: UserRound, label: "Account" },
 ];
 
@@ -47,12 +49,18 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DesktopNav() {
+function visibleNavItems(role?: string) {
+  const canManage = role === "OWNER" || role === "ADMIN";
+
+  return navItems.filter((item) => !item.adminOnly || canManage);
+}
+
+export function DesktopNav({ role }: { role?: string }) {
   const pathname = usePathname();
 
   return (
     <nav className="mt-10 space-y-1">
-      {navItems.map((item) => {
+      {visibleNavItems(role).map((item) => {
         const Icon = item.icon;
         const active = isActivePath(pathname, item.href);
 
@@ -86,7 +94,8 @@ export function MobileNav({
   const pathname = usePathname();
   const menuId = useId();
   const [open, setOpen] = useState(false);
-  const activeItem = navItems.find((item) => isActivePath(pathname, item.href));
+  const items = visibleNavItems(role);
+  const activeItem = items.find((item) => isActivePath(pathname, item.href));
 
   useEffect(() => {
     if (!open) {
@@ -140,7 +149,7 @@ export function MobileNav({
               </div>
             </div>
             <nav className="mt-3 grid gap-1" aria-label="Mobile navigation">
-              {navItems.map((item) => {
+              {items.map((item) => {
                 const Icon = item.icon;
                 const active = isActivePath(pathname, item.href);
 

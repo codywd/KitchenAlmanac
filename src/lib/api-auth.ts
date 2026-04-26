@@ -6,6 +6,9 @@ import {
   type FamilyContext,
 } from "./family";
 import { getCurrentUser, type CurrentUser } from "./session";
+import { recordAuditEvent } from "./audit";
+import { assertRateLimit, rateLimitPolicies } from "./rate-limit";
+import { getRequestMetadata } from "./security";
 
 export type AuthenticatedRequest = {
   authType: "apiKey" | "session";
@@ -33,6 +36,15 @@ export async function authenticateRequest(
 
   if (apiKey) {
     const keyHash = hashApiKey(apiKey);
+    const requestMeta = getRequestMetadata(request);
+
+    await assertRateLimit({
+      policy: rateLimitPolicies.apiKey,
+      requestMeta,
+      scope: "api-key",
+      subject: keyHash,
+    });
+
     const key = await getDb().apiKey.findFirst({
       include: {
         createdBy: {
@@ -45,6 +57,7 @@ export async function authenticateRequest(
               },
             },
             id: true,
+            mustChangePassword: true,
             name: true,
           },
         },
@@ -63,6 +76,20 @@ export async function authenticateRequest(
     });
 
     if (!key) {
+      await assertRateLimit({
+        policy: rateLimitPolicies.apiAuthFailure,
+        requestMeta,
+        scope: "api-auth-failure",
+        subject: requestMeta.ipHash ?? "unknown",
+      });
+      await recordAuditEvent({
+        metadata: {
+          keyHashPrefix: keyHash.slice(0, 12),
+        },
+        outcome: "failure",
+        requestMeta,
+        type: "api_key.auth",
+      });
       return null;
     }
 
@@ -75,6 +102,15 @@ export async function authenticateRequest(
       creatorMembership.familyId !== key.familyId ||
       !canManageApiKeys(creatorMembership.role)
     ) {
+      await recordAuditEvent({
+        actorUserId: key.createdByUserId,
+        familyId: key.familyId,
+        outcome: "failure",
+        requestMeta,
+        subjectId: key.id,
+        subjectType: "api-key",
+        type: "api_key.auth",
+      });
       return null;
     }
 
@@ -85,6 +121,15 @@ export async function authenticateRequest(
       where: {
         id: key.id,
       },
+    });
+    await recordAuditEvent({
+      actorUserId: key.createdByUserId,
+      familyId: key.familyId,
+      outcome: "success",
+      requestMeta,
+      subjectId: key.id,
+      subjectType: "api-key",
+      type: "api_key.auth",
     });
 
     return {

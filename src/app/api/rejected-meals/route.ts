@@ -1,7 +1,12 @@
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { getDb } from "@/lib/db";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { rejectedMealCreateSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +42,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const payload = rejectedMealCreateSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "rejected-meal-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = rejectedMealCreateSchema.parse(await readJsonWithLimit(request));
     const rejectedMeal = await getDb().rejectedMeal.create({
       data: {
         ...payload,

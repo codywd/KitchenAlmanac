@@ -1,8 +1,13 @@
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { buildRejectedMealFromFeedback } from "@/lib/feedback";
 import { getDb } from "@/lib/db";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { feedbackSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +28,21 @@ export async function POST(
 
   try {
     const { mealId } = await context.params;
-    const payload = feedbackSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "meal-feedback-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = feedbackSchema.parse(await readJsonWithLimit(request));
     const meal = await getDb().meal.findFirst({
       where: {
         id: mealId,

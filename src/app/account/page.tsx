@@ -18,6 +18,17 @@ export default async function AccountPage() {
           first sign-in.
         </PageIntro>
 
+        {context.user.mustChangePassword ? (
+          <div className="ka-alert mb-6">
+            <div className="text-sm font-black text-[var(--ink)]">
+              Password change required
+            </div>
+            <p className="mt-1 text-sm font-semibold text-[var(--muted-ink)]">
+              Update your temporary password before continuing to the rest of the app.
+            </p>
+          </div>
+        ) : null}
+
         <Section
           description={`${context.user.email} / ${context.family.name} / ${context.role.toLowerCase()}`}
           title="Password"

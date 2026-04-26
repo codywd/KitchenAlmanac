@@ -4,8 +4,13 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import {
   createSavedRecipeForFamily,
   listSavedRecipesForFamily,
@@ -53,7 +58,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const payload = savedRecipeCreateSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "saved-recipe-write-api",
+        subject: `${auth.family.id}:${userId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = savedRecipeCreateSchema.parse(await readJsonWithLimit(request));
     const savedRecipe = await createSavedRecipeForFamily({
       familyId: auth.family.id,
       payload,

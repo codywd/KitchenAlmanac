@@ -1,9 +1,14 @@
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { addDays, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
 import { mealCreateData } from "@/lib/meal-mapping";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { mealUpsertSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +30,21 @@ export async function POST(
   try {
     const { date, weekId } = await context.params;
     const mealDate = parseDateOnly(date);
-    const payload = mealUpsertSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "meal-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = mealUpsertSchema.parse(await readJsonWithLimit(request));
     const week = await getDb().week.findFirst({
       select: {
         id: true,

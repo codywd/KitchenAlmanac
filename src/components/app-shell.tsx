@@ -35,7 +35,7 @@ export function AppShell({
             Private household meals, shopping, and recipes.
           </span>
         </Link>
-        <DesktopNav />
+        <DesktopNav role={role} />
         <div className="absolute inset-x-6 bottom-6 border-t border-[var(--line)] pt-5">
           <div className="text-sm font-extrabold text-[var(--ink)]">
             {user.name ?? user.email}

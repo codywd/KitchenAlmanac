@@ -2,7 +2,12 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { shoppingItemStatusUpdateSchema } from "@/lib/schemas";
 import { revalidateShoppingSurfaces } from "@/lib/shopping-revalidation";
 import { upsertShoppingItemStatusForFamily } from "@/lib/shopping-status";
@@ -27,8 +32,22 @@ export async function POST(
 
   try {
     const { weekId } = await context.params;
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.shoppingWrite,
+        scope: "shopping-write-api",
+        subject: `${auth.family.id}:${userId}:${weekId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
     const payload = shoppingItemStatusUpdateSchema.parse({
-      ...(await request.json()),
+      ...(await readJsonWithLimit(request)),
       weekId,
     });
     const shoppingItemState = await upsertShoppingItemStatusForFamily({
