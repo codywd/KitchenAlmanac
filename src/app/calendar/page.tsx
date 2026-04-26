@@ -276,9 +276,12 @@ export default async function CalendarPage({
         <PageIntro
           actions={
             weeks.length > 0 ? (
-              <form action="/calendar" className="flex flex-col gap-2 sm:flex-row">
+              <form
+                action="/calendar"
+                className="flex w-full min-w-0 max-w-lg flex-col gap-2 sm:flex-row"
+              >
                 <select
-                  className="ka-select min-w-72"
+                  className="ka-select min-w-0 flex-1 sm:w-80"
                   defaultValue={selectedWeek?.id}
                   name="weekId"
                 >
@@ -295,10 +298,10 @@ export default async function CalendarPage({
             ) : null
           }
           eyebrow="Dinner command center"
-          title={commandCenter.selectedWeek?.label ?? "Week Command Center"}
+          title="Week Command Center"
         >
           {commandCenter.selectedWeek
-            ? `${commandCenter.selectedWeek.weekStart} through ${commandCenter.selectedWeek.weekEnd}`
+            ? `${commandCenter.selectedWeek.label} / ${commandCenter.selectedWeek.weekStart} through ${commandCenter.selectedWeek.weekEnd}`
             : "Plan the first household week, then the weekly workflow appears here."}
         </PageIntro>
 
