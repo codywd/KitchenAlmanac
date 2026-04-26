@@ -57,7 +57,7 @@ export function AppShell({
         </div>
       </aside>
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[rgba(255,247,232,0.94)] px-3 py-2 backdrop-blur lg:hidden">
+        <header className="mobile-topbar sticky top-0 z-40 border-b border-[var(--line)] bg-[rgba(255,247,232,0.94)] px-3 py-2 backdrop-blur lg:hidden">
           <div className="flex min-h-12 items-center justify-between gap-3">
             <Link className="flex min-w-0 items-center gap-3" href="/calendar">
               <span className="grid size-9 shrink-0 place-items-center bg-[var(--tomato)] text-[var(--flour)]">

@@ -282,4 +282,4 @@ npm run build
 
 ## Deployment Notes
 
-`vercel.json` uses `prisma migrate deploy && next build` so production deployments apply migrations before the Next.js build. Confirm this checkout is linked with `.vercel/project.json` before deploying. Production seeding is intentionally separate; do not run `npm run db:seed` against production unless explicit `DATABASE_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` values are provided.
+`vercel.json` uses `prisma migrate deploy && next build` so production deployments apply migrations before the Next.js build. Confirm this checkout is linked with `.vercel/project.json` before deploying. The canonical production URL is `https://meals.dostal.co`; old MealPlanningApp aliases should not be reintroduced. Production seeding is intentionally separate; do not run `npm run db:seed` against production unless explicit `DATABASE_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` values are provided.

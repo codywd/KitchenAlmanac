@@ -22,6 +22,7 @@
   --butter: #f5c85b;
   --blush: #f0c0ad;
   --plum: #5e3451;
+  --mobile-topbar-offset: calc(4rem + env(safe-area-inset-top));
   --shadow-soft: 0 24px 70px rgba(70, 44, 20, 0.18);
   --shadow-tight: 0 10px 24px rgba(70, 44, 20, 0.14);
 }
@@ -253,6 +254,13 @@ body::before {
     transform 180ms ease;
 }
 
+.ka-button,
+.ka-button-secondary,
+.ka-button-danger {
+  line-height: 1.15;
+  text-align: center;
+}
+
 .ka-button {
   background: var(--tomato);
   color: var(--flour);
@@ -440,6 +448,10 @@ body::before {
   transform: scaleY(1);
 }
 
+.mobile-topbar {
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
+}
+
 .mobile-menu {
   position: relative;
 }
@@ -450,7 +462,7 @@ body::before {
   cursor: default;
   inset: 0;
   position: fixed;
-  top: 4rem;
+  top: var(--mobile-topbar-offset);
   z-index: 30;
 }
 
@@ -461,12 +473,13 @@ body::before {
   border: 1px solid var(--line);
   box-shadow: 0 22px 60px rgba(37, 24, 15, 0.22);
   left: 0.75rem;
-  max-height: calc(100dvh - 5rem);
+  max-height: calc(100dvh - var(--mobile-topbar-offset) - 1rem - env(safe-area-inset-bottom));
   overflow-y: auto;
-  padding: 0.9rem;
+  overscroll-behavior: contain;
+  padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
   position: fixed;
   right: 0.75rem;
-  top: 4.25rem;
+  top: calc(var(--mobile-topbar-offset) + 0.25rem);
   z-index: 40;
 }
 
@@ -482,6 +495,7 @@ body::before {
 }
 
 .mobile-menu-link[data-active="true"] {
+  background: rgba(169, 65, 45, 0.1);
   border-color: var(--tomato);
 }
 
@@ -573,6 +587,96 @@ body::before {
 @media (min-width: 768px) {
   .ka-page-intro {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .ka-main {
+    padding: 1rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
+  .ka-page-intro {
+    gap: 0.95rem;
+    margin-bottom: 1.05rem;
+    padding-bottom: 0.95rem;
+  }
+
+  .ka-page-actions {
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    margin-inline: -1rem;
+    max-width: 100vw;
+    overflow-x: auto;
+    padding: 0.1rem 1rem 0.4rem;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ka-page-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ka-page-actions > *,
+  .ka-page-actions a,
+  .ka-page-actions button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+
+  .ka-page-actions form,
+  .ka-page-actions form > div {
+    align-items: center;
+    display: flex;
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  .ka-page-actions .ka-field,
+  .ka-page-actions .ka-select {
+    min-width: min(16rem, 68vw);
+  }
+
+  .ka-title-small {
+    font-size: clamp(1.9rem, 10vw, 2.55rem);
+    line-height: 0.98;
+    overflow-wrap: anywhere;
+  }
+
+  .ka-copy {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin-top: 0.65rem;
+  }
+
+  .ka-section {
+    padding-block: 1.05rem;
+  }
+
+  .ka-section-header {
+    gap: 0.35rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .ka-section-title {
+    font-size: clamp(1.45rem, 8vw, 2rem);
+  }
+
+  .ka-panel {
+    padding: 0.95rem;
+  }
+
+  .ka-card.p-5 {
+    padding: 1rem;
+  }
+
+  .calendar-tile {
+    min-height: 12rem;
+    padding: 0.9rem;
   }
 }
 

@@ -16,7 +16,11 @@ export function PageIntro({
         <h1 className="ka-title-small">{title}</h1>
         {children ? <p className="ka-copy">{children}</p> : null}
       </div>
-      {actions ? <div className="ka-page-actions">{actions}</div> : null}
+      {actions ? (
+        <div aria-label="Page actions" className="ka-page-actions">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
