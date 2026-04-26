@@ -440,14 +440,53 @@ body::before {
   transform: scaleY(1);
 }
 
-.mobile-nav-link {
-  border-bottom: 2px solid transparent;
+.mobile-menu {
+  position: relative;
+}
+
+.mobile-menu-scrim {
+  background: rgba(37, 24, 15, 0.18);
+  border: 0;
+  cursor: default;
+  inset: 0;
+  position: fixed;
+  top: 4rem;
+  z-index: 30;
+}
+
+.mobile-menu-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 253, 245, 0.96), rgba(255, 247, 232, 0.94)),
+    var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 60px rgba(37, 24, 15, 0.22);
+  left: 0.75rem;
+  max-height: calc(100dvh - 5rem);
+  overflow-y: auto;
+  padding: 0.9rem;
+  position: fixed;
+  right: 0.75rem;
+  top: 4.25rem;
+  z-index: 40;
+}
+
+.mobile-menu-link {
+  border-left: 3px solid transparent;
   color: var(--muted-ink);
 }
 
-.mobile-nav-link[data-active="true"] {
-  border-color: var(--tomato);
+.mobile-menu-link:hover,
+.mobile-menu-link[data-active="true"] {
+  background: rgba(255, 253, 245, 0.72);
   color: var(--ink);
+}
+
+.mobile-menu-link[data-active="true"] {
+  border-color: var(--tomato);
+}
+
+.mobile-menu-user {
+  margin-top: 0.85rem;
 }
 
 .calendar-tile {
