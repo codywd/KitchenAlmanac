@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MealFeedbackStatus {
+  PLANNED
+  LIKED
+  WORKED_WITH_TWEAKS
+  REJECTED
+}
+
+enum MealOutcomeStatus {
+  PLANNED
+  COOKED
+  SKIPPED
+  REPLACED
+  LEFTOVERS
+}
+
+enum HouseholdDocumentKind {
+  HOUSEHOLD_PROFILE
+  MEDICAL_GUIDELINES
+  BATCH_PREP_PATTERNS
+}
+
+enum FamilyRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MealVoteValue {
+  WANT
+  OKAY
+  NO
+}
+
+enum ShoppingItemStatus {
+  NEEDED
+  BOUGHT
+  ALREADY_HAVE
+}
+
+model User {
+  id                       String              @id @default(cuid())
+  email                    String              @unique
+  name                     String?
+  passwordHash             String
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  sessions                 Session[]
+  familyMembership         FamilyMember?
+  createdApiKeys           ApiKey[]            @relation("ApiKeyCreator")
+  createdRejectedMeals     RejectedMeal[]      @relation("RejectedMealCreator")
+  createdPantryStaples     PantryStaple[]      @relation("PantryStapleCreator")
+  createdSavedRecipes      SavedRecipe[]       @relation("SavedRecipeCreator")
+  deactivatedPantryStaples PantryStaple[]      @relation("PantryStapleDeactivator")
+  archivedSavedRecipes     SavedRecipe[]       @relation("SavedRecipeArchiver")
+  closedOutMeals           Meal[]              @relation("MealCloseoutUser")
+  mealVotes                MealVote[]
+  updatedSavedRecipes      SavedRecipe[]       @relation("SavedRecipeUpdater")
+  updatedShoppingItems     ShoppingItemState[] @relation("ShoppingItemUpdater")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Family {
+  id                 String              @id @default(cuid())
+  name               String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  members            FamilyMember[]
+  apiKeys            ApiKey[]
+  householdDocuments HouseholdDocument[]
+  pantryStaples      PantryStaple[]
+  rejectedMeals      RejectedMeal[]
+  savedRecipes       SavedRecipe[]
+  shoppingItemStates ShoppingItemState[]
+  weeks              Week[]
+}
+
+model FamilyMember {
+  id        String     @id @default(cuid())
+  familyId  String
+  userId    String     @unique
+  role      FamilyRole @default(MEMBER)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  family    Family     @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([familyId])
+  @@index([role])
+}
+
+model ApiKey {
+  id              String    @id @default(cuid())
+  name            String
+  keyPrefix       String
+  keyHash         String    @unique
+  familyId        String
+  createdByUserId String?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  family          Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy       User?     @relation("ApiKeyCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([familyId])
+  @@index([createdByUserId])
+  @@index([keyPrefix])
+}
+
+model HouseholdDocument {
+  id        String                @id @default(cuid())
+  familyId  String
+  kind      HouseholdDocumentKind
+  title     String
+  content   String
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  family    Family                @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, kind])
+  @@index([familyId])
+}
+
+model Week {
+  id                 String              @id @default(cuid())
+  familyId           String
+  weekStart          DateTime
+  title              String?
+  notes              String?
+  budgetTargetCents  Int?
+  sourceImport       Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  family             Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  days               DayPlan[]
+  groceryList        GroceryList?
+  shoppingItemStates ShoppingItemState[]
+
+  @@unique([familyId, weekStart])
+  @@index([familyId, weekStart])
+}
+
+model DayPlan {
+  id        String   @id @default(cuid())
+  weekId    String
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  week      Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  dinner    Meal?
+
+  @@unique([weekId, date])
+  @@index([date])
+}
+
+model Meal {
+  id                    String             @id @default(cuid())
+  dayPlanId             String             @unique
+  name                  String
+  cuisine               String?
+  prepTimeActiveMinutes Int?
+  prepTimeTotalMinutes  Int?
+  costEstimateCents     Int?
+  servings              Int                @default(7)
+  ingredients           Json
+  methodSteps           String[]
+  kidAdaptations        String?
+  batchPrepNote         String?
+  diabetesFriendly      Boolean            @default(false)
+  heartHealthy          Boolean            @default(false)
+  noFishSafe            Boolean            @default(false)
+  kidFriendly           Boolean            @default(false)
+  budgetFit             Boolean            @default(false)
+  weeknightTimeSafe     Boolean            @default(false)
+  validationNotes       String?
+  sourceRecipe          Json?
+  feedbackStatus        MealFeedbackStatus @default(PLANNED)
+  feedbackReason        String?
+  feedbackTweaks        String?
+  outcomeStatus         MealOutcomeStatus  @default(PLANNED)
+  outcomeNotes          String?
+  leftoverNotes         String?
+  actualCostCents       Int?
+  closedOutAt           DateTime?
+  closedOutByUserId     String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  dayPlan               DayPlan            @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
+  closedOutBy           User?              @relation("MealCloseoutUser", fields: [closedOutByUserId], references: [id], onDelete: SetNull)
+  rejectedMealPatterns  RejectedMeal[]
+  savedRecipes          SavedRecipe[]      @relation("SavedRecipeSourceMeal")
+  votes                 MealVote[]
+
+  @@index([closedOutByUserId])
+  @@index([outcomeStatus])
+}
+
+model GroceryList {
+  id        String   @id @default(cuid())
+  weekId    String   @unique
+  sections  Json
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  week      Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+}
+
+model ShoppingItemState {
+  id              String             @id @default(cuid())
+  familyId        String
+  weekId          String
+  canonicalName   String
+  itemName        String
+  quantity        String?
+  status          ShoppingItemStatus @default(NEEDED)
+  updatedByUserId String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  family          Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  week            Week               @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  updatedBy       User?              @relation("ShoppingItemUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([weekId, canonicalName])
+  @@index([familyId])
+  @@index([weekId])
+  @@index([status])
+  @@index([updatedByUserId])
+}
+
+model PantryStaple {
+  id                  String   @id @default(cuid())
+  familyId            String
+  canonicalName       String
+  displayName         String
+  active              Boolean  @default(true)
+  createdByUserId     String?
+  deactivatedByUserId String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  family              Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy           User?    @relation("PantryStapleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  deactivatedBy       User?    @relation("PantryStapleDeactivator", fields: [deactivatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([familyId, canonicalName])
+  @@index([familyId])
+  @@index([active])
+  @@index([createdByUserId])
+  @@index([deactivatedByUserId])
+}
+
+model SavedRecipe {
+  id                    String              @id @default(cuid())
+  familyId              String
+  name                  String
+  cuisine               String?
+  ingredients           Json
+  methodSteps           String[]
+  servings              Int                 @default(7)
+  costEstimateCents     Int?
+  prepTimeActiveMinutes Int?
+  prepTimeTotalMinutes  Int?
+  kidAdaptations        String?
+  batchPrepNote         String?
+  diabetesFriendly      Boolean             @default(false)
+  heartHealthy          Boolean             @default(false)
+  noFishSafe            Boolean             @default(false)
+  kidFriendly           Boolean             @default(false)
+  budgetFit             Boolean             @default(false)
+  weeknightTimeSafe     Boolean             @default(false)
+  validationNotes       String?
+  sourceRecipe          Json?
+  sourceMealId          String?
+  sourceMealName        String?
+  sourceMealDate        DateTime?
+  sourceWeekId          String?
+  sourceWeekStart       DateTime?
+  feedbackStatus        MealFeedbackStatus?
+  feedbackReason        String?
+  feedbackTweaks        String?
+  outcomeStatus         MealOutcomeStatus?
+  outcomeNotes          String?
+  leftoverNotes         String?
+  actualCostCents       Int?
+  active                Boolean             @default(true)
+  createdByUserId       String?
+  updatedByUserId       String?
+  archivedByUserId      String?
+  archivedAt            DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  family                Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  sourceMeal            Meal?               @relation("SavedRecipeSourceMeal", fields: [sourceMealId], references: [id], onDelete: SetNull)
+  createdBy             User?               @relation("SavedRecipeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy             User?               @relation("SavedRecipeUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  archivedBy            User?               @relation("SavedRecipeArchiver", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([familyId, sourceMealId])
+  @@index([familyId])
+  @@index([active])
+  @@index([sourceMealId])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([archivedByUserId])
+}
+
+model RejectedMeal {
+  id              String   @id @default(cuid())
+  familyId        String
+  mealName        String
+  reason          String
+  patternToAvoid  String
+  active          Boolean  @default(true)
+  sourceMealId    String?
+  createdByUserId String?
+  rejectedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  family          Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  sourceMeal      Meal?    @relation(fields: [sourceMealId], references: [id], onDelete: SetNull)
+  createdBy       User?    @relation("RejectedMealCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([familyId])
+  @@index([active])
+  @@index([createdByUserId])
+  @@index([sourceMealId])
+}
+
+model MealVote {
+  id        String        @id @default(cuid())
+  mealId    String
+  userId    String
+  vote      MealVoteValue
+  comment   String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  meal      Meal          @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mealId, userId])
+  @@index([userId])
+}

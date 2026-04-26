@@ -1,0 +1,548 @@
+@import "@fontsource-variable/figtree/wght.css";
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "tailwindcss";
+
+:root {
+  --background: #efe1c8;
+  --foreground: #25180f;
+  --paper: #fff7e8;
+  --paper-deep: #f4dfbd;
+  --flour: #fffdf5;
+  --ink: #25180f;
+  --muted-ink: #6f5841;
+  --line: rgba(62, 42, 24, 0.2);
+  --line-strong: rgba(62, 42, 24, 0.38);
+  --tomato: #a9412d;
+  --tomato-dark: #7b2e21;
+  --herb: #42663f;
+  --herb-dark: #2e4a2e;
+  --sage: #dfe7cc;
+  --brass: #b17a32;
+  --butter: #f5c85b;
+  --blush: #f0c0ad;
+  --plum: #5e3451;
+  --shadow-soft: 0 24px 70px rgba(70, 44, 20, 0.18);
+  --shadow-tight: 0 10px 24px rgba(70, 44, 20, 0.14);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Figtree Variable", ui-sans-serif, sans-serif;
+  --font-serif: "Newsreader Variable", Georgia, serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Figtree Variable", ui-sans-serif, sans-serif;
+  letter-spacing: 0;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 14% 10%, rgba(245, 200, 91, 0.34), transparent 28rem),
+    radial-gradient(circle at 86% 4%, rgba(169, 65, 45, 0.22), transparent 24rem),
+    radial-gradient(circle at 80% 92%, rgba(66, 102, 63, 0.22), transparent 26rem),
+    linear-gradient(135deg, rgba(255, 253, 245, 0.68), rgba(239, 225, 200, 0.5)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(37, 24, 15, 0.025) 0,
+      rgba(37, 24, 15, 0.025) 1px,
+      transparent 1px,
+      transparent 74px
+    );
+}
+
+.recipe-display {
+  font-family: "Newsreader Variable", Georgia, serif;
+  letter-spacing: 0;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(169, 65, 45, 0.24);
+}
+
+body::before {
+  background-image:
+    radial-gradient(rgba(37, 24, 15, 0.12) 0.7px, transparent 0.7px),
+    radial-gradient(rgba(255, 253, 245, 0.5) 0.8px, transparent 0.8px);
+  background-position:
+    0 0,
+    18px 22px;
+  background-size:
+    42px 42px,
+    46px 46px;
+  content: "";
+  inset: 0;
+  opacity: 0.22;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
+}
+
+.ka-app {
+  background:
+    linear-gradient(90deg, rgba(255, 247, 232, 0.88), rgba(255, 247, 232, 0.3) 48%, rgba(239, 225, 200, 0.42)),
+    var(--background);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+.ka-main {
+  animation: paper-rise 520ms ease both;
+  margin-inline: auto;
+  max-width: 1500px;
+  min-height: 100vh;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.ka-page {
+  animation: ink-reveal 540ms ease both;
+}
+
+.ka-page-intro {
+  align-items: end;
+  border-bottom: 1px solid var(--line-strong);
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: clamp(1.5rem, 3vw, 2.4rem);
+  padding-bottom: clamp(1.1rem, 2.5vw, 1.8rem);
+  position: relative;
+}
+
+.ka-page-intro::after {
+  background: linear-gradient(90deg, var(--tomato), var(--butter), transparent);
+  bottom: -1px;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  width: min(16rem, 55vw);
+}
+
+.ka-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ka-kicker {
+  color: var(--tomato);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ka-title {
+  color: var(--ink);
+  font-family: "Newsreader Variable", Georgia, serif;
+  font-size: clamp(2.35rem, 6vw, 5.2rem);
+  font-weight: 640;
+  line-height: 0.94;
+  margin-top: 0.45rem;
+  max-width: 12ch;
+}
+
+.ka-title-small {
+  color: var(--ink);
+  font-family: "Newsreader Variable", Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3.7rem);
+  font-weight: 620;
+  line-height: 1;
+  margin-top: 0.45rem;
+}
+
+.ka-copy {
+  color: var(--muted-ink);
+  font-size: 0.98rem;
+  line-height: 1.7;
+  margin-top: 0.85rem;
+  max-width: 46rem;
+}
+
+.ka-section {
+  border-top: 1px solid var(--line);
+  padding-block: clamp(1.35rem, 3vw, 2.35rem);
+}
+
+.ka-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ka-section-header {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+  margin-bottom: 1.1rem;
+}
+
+.ka-section-title {
+  color: var(--ink);
+  font-family: "Newsreader Variable", Georgia, serif;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  font-weight: 620;
+  line-height: 1.05;
+}
+
+.ka-section-description {
+  color: var(--muted-ink);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  max-width: 44rem;
+}
+
+.ka-panel,
+.ka-card {
+  background:
+    linear-gradient(135deg, rgba(255, 253, 245, 0.86), rgba(255, 247, 232, 0.72)),
+    var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-tight);
+}
+
+.ka-panel {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.ka-card {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ka-card:hover {
+  border-color: rgba(169, 65, 45, 0.36);
+  box-shadow: 0 16px 34px rgba(70, 44, 20, 0.17);
+  transform: translateY(-2px);
+}
+
+.ka-button,
+.ka-button-secondary,
+.ka-button-danger,
+.ka-icon-button {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 2.75rem;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.ka-button {
+  background: var(--tomato);
+  color: var(--flour);
+  padding-inline: 1rem;
+}
+
+.ka-button:hover {
+  background: var(--tomato-dark);
+  transform: translateY(-1px);
+}
+
+.ka-button-secondary {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  padding-inline: 1rem;
+}
+
+.ka-button-secondary:hover {
+  background: rgba(255, 253, 245, 0.72);
+  border-color: var(--tomato);
+  color: var(--tomato-dark);
+}
+
+.ka-button-danger {
+  border: 1px solid rgba(169, 65, 45, 0.38);
+  color: var(--tomato-dark);
+  padding-inline: 1rem;
+}
+
+.ka-button-danger:hover {
+  background: rgba(169, 65, 45, 0.1);
+}
+
+.ka-icon-button {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  width: 2.75rem;
+}
+
+.ka-field,
+.ka-select,
+.ka-textarea {
+  background: rgba(255, 253, 245, 0.72);
+  border: 0;
+  border-bottom: 2px solid var(--line-strong);
+  color: var(--ink);
+  min-height: 2.75rem;
+  outline: none;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+  width: 100%;
+}
+
+.ka-field,
+.ka-select {
+  padding-inline: 0.8rem;
+}
+
+.ka-textarea {
+  padding: 0.85rem;
+  resize: vertical;
+}
+
+.ka-field::placeholder,
+.ka-textarea::placeholder {
+  color: rgba(111, 88, 65, 0.7);
+}
+
+.ka-field:focus,
+.ka-select:focus,
+.ka-textarea:focus {
+  background: var(--flour);
+  border-color: var(--tomato);
+  box-shadow: 0 4px 0 rgba(169, 65, 45, 0.08);
+}
+
+.ka-label {
+  color: var(--muted-ink);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.ka-note {
+  background: rgba(245, 200, 91, 0.16);
+  border-left: 3px solid var(--brass);
+  color: var(--muted-ink);
+  padding: 0.8rem 0.95rem;
+}
+
+.ka-success {
+  background: rgba(66, 102, 63, 0.13);
+  border-left: 3px solid var(--herb);
+  color: var(--herb-dark);
+  padding: 0.8rem 0.95rem;
+}
+
+.ka-error {
+  background: rgba(169, 65, 45, 0.12);
+  border-left: 3px solid var(--tomato);
+  color: var(--tomato-dark);
+  padding: 0.8rem 0.95rem;
+}
+
+.ka-status-mark {
+  background: rgba(66, 102, 63, 0.12);
+  color: var(--herb-dark);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35rem 0.55rem;
+}
+
+.ka-status-mark[data-tone="muted"] {
+  background: rgba(111, 88, 65, 0.12);
+  color: var(--muted-ink);
+}
+
+.ka-status-mark[data-tone="warm"] {
+  background: rgba(245, 200, 91, 0.18);
+  color: #79501d;
+}
+
+.ka-status-mark[data-tone="danger"] {
+  background: rgba(169, 65, 45, 0.12);
+  color: var(--tomato-dark);
+}
+
+.login-hero {
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(90deg, rgba(37, 24, 15, 0.88), rgba(37, 24, 15, 0.42) 48%, rgba(37, 24, 15, 0.1)),
+    url("/brand/kitchen-almanac-still-life.svg");
+  background-position: center;
+  background-size: cover;
+  color: var(--flour);
+}
+
+.login-form {
+  background: rgba(255, 247, 232, 0.84);
+  border-left: 4px solid var(--tomato);
+  box-shadow: var(--shadow-soft);
+  color: var(--ink);
+}
+
+.nav-rail {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 245, 0.94), rgba(244, 223, 189, 0.88)),
+    var(--paper);
+  border-right: 1px solid var(--line);
+}
+
+.nav-link {
+  color: var(--muted-ink);
+  position: relative;
+}
+
+.nav-link::before {
+  background: var(--tomato);
+  content: "";
+  height: 100%;
+  left: -0.75rem;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  transform: scaleY(0.4);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  width: 3px;
+}
+
+.nav-link:hover,
+.nav-link[data-active="true"] {
+  color: var(--ink);
+}
+
+.nav-link[data-active="true"]::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.mobile-nav-link {
+  border-bottom: 2px solid transparent;
+  color: var(--muted-ink);
+}
+
+.mobile-nav-link[data-active="true"] {
+  border-color: var(--tomato);
+  color: var(--ink);
+}
+
+.calendar-tile {
+  background:
+    linear-gradient(145deg, rgba(255, 253, 245, 0.82), rgba(255, 247, 232, 0.7)),
+    var(--paper);
+  border: 1px solid var(--line);
+  min-height: 16rem;
+  padding: 1rem;
+  position: relative;
+}
+
+.calendar-tile::after {
+  background: var(--tomato);
+  content: "";
+  height: 3px;
+  left: 1rem;
+  opacity: 0;
+  position: absolute;
+  right: 1rem;
+  top: 0;
+  transform: scaleX(0.5);
+  transform-origin: left;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.calendar-tile:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.ledger-row {
+  border-top: 1px solid var(--line);
+  padding-block: 1.1rem;
+}
+
+.ledger-row:first-child {
+  border-top: 0;
+}
+
+.cook-surface {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(245, 200, 91, 0.18), transparent 18rem),
+    linear-gradient(135deg, var(--paper), var(--paper-deep));
+  color: var(--ink);
+}
+
+.cook-article {
+  background:
+    linear-gradient(90deg, rgba(111, 88, 65, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(111, 88, 65, 0.08) 1px, transparent 1px),
+    var(--paper);
+  background-size: 42px 42px;
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+@keyframes paper-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ink-reveal {
+  from {
+    clip-path: inset(0 0 7% 0);
+    opacity: 0;
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@media (min-width: 768px) {
+  .ka-page-intro {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

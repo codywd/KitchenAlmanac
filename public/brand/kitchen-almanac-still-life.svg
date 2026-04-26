@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" role="img" aria-label="A warm kitchen table with a weekly meal calendar, herbs, tomatoes, carrots, and handwritten dinner notes.">
+  <defs>
+    <linearGradient id="wood" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#6b3d24"/>
+      <stop offset="0.48" stop-color="#9b6537"/>
+      <stop offset="1" stop-color="#3b2418"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff9e9"/>
+      <stop offset="1" stop-color="#eecf9c"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence baseFrequency="0.75" numOctaves="3" seed="11" type="fractalNoise"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA slope="0.16" type="linear"/>
+      </feComponentTransfer>
+      <feBlend in2="SourceGraphic" mode="multiply"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" flood-color="#21140b" flood-opacity="0.34" stdDeviation="28"/>
+    </filter>
+    <pattern id="ruled" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M0 0H120M0 40H120M0 80H120" fill="none" stroke="#a47a43" stroke-opacity="0.22" stroke-width="2"/>
+      <path d="M0 0V120M40 0V120M80 0V120" fill="none" stroke="#a47a43" stroke-opacity="0.14" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1800" height="1200" fill="url(#wood)"/>
+  <g filter="url(#grain)">
+    <path d="M-80 180C300 95 540 280 940 180c315-78 606-30 940-154v1230H-80z" fill="#b8793f" opacity="0.36"/>
+    <path d="M0 750c358-96 672 78 1010-23 334-100 564-29 790-114v590H0z" fill="#2a1810" opacity="0.2"/>
+    <path d="M104 144h1600" stroke="#f3c37a" stroke-opacity="0.18" stroke-width="6"/>
+    <path d="M48 322h1640M34 558h1720M86 918h1580" stroke="#28170e" stroke-opacity="0.2" stroke-width="7"/>
+  </g>
+  <g filter="url(#shadow)" transform="rotate(-5 1030 610)">
+    <rect x="560" y="192" width="940" height="760" rx="10" fill="url(#paper)"/>
+    <rect x="610" y="260" width="840" height="610" fill="url(#ruled)" opacity="0.82"/>
+    <path d="M630 336h790M630 434h790M630 532h790M630 630h790M630 728h790" stroke="#6f4d28" stroke-opacity="0.28" stroke-width="3"/>
+    <path d="M730 276v594M850 276v594M970 276v594M1090 276v594M1210 276v594M1330 276v594" stroke="#6f4d28" stroke-opacity="0.18" stroke-width="3"/>
+    <text x="628" y="236" fill="#25180f" font-family="Georgia, serif" font-size="58" font-weight="700">KitchenAlmanac</text>
+    <text x="637" y="316" fill="#a9412d" font-family="Georgia, serif" font-size="32" font-style="italic">week of dinners</text>
+    <g fill="#42663f" font-family="Georgia, serif" font-size="31" font-weight="700">
+      <text x="654" y="398">Mon</text>
+      <text x="774" y="398">Tue</text>
+      <text x="894" y="398">Wed</text>
+      <text x="1014" y="398">Thu</text>
+      <text x="1134" y="398">Fri</text>
+      <text x="1254" y="398">Sat</text>
+      <text x="1374" y="398">Sun</text>
+    </g>
+    <g fill="#50331e" font-family="Georgia, serif" font-size="25">
+      <text x="645" y="482">taco bowls</text>
+      <text x="765" y="575">lentil soup</text>
+      <text x="886" y="672">sheet pan</text>
+      <text x="1007" y="760">rice night</text>
+      <text x="1127" y="485">leftovers</text>
+      <text x="1248" y="582">pasta</text>
+      <text x="1368" y="676">roast</text>
+    </g>
+    <path d="M1370 244c38 26 46 67 22 110" fill="none" stroke="#a9412d" stroke-linecap="round" stroke-width="8"/>
+  </g>
+  <g filter="url(#shadow)">
+    <ellipse cx="292" cy="816" rx="138" ry="52" fill="#1d120c" opacity="0.28"/>
+    <path d="M170 748c88-46 185-52 287-22-58 58-152 83-287 22z" fill="#42663f"/>
+    <path d="M214 725c64 54 134 63 214 18" fill="none" stroke="#dfe7cc" stroke-linecap="round" stroke-width="8"/>
+    <circle cx="340" cy="818" r="52" fill="#a9412d"/>
+    <circle cx="404" cy="780" r="45" fill="#cf6142"/>
+    <circle cx="284" cy="764" r="42" fill="#b94d35"/>
+    <path d="M320 728c14-18 24-36 30-55" fill="none" stroke="#42663f" stroke-linecap="round" stroke-width="9"/>
+  </g>
+  <g filter="url(#shadow)" transform="rotate(10 1460 855)">
+    <path d="M1398 716c98 64 155 146 172 246-71-30-143-90-216-181z" fill="#e47732"/>
+    <path d="M1408 718c63 81 112 164 148 248" fill="none" stroke="#8f431e" stroke-linecap="round" stroke-width="8"/>
+    <path d="M1364 686c-4-62 41-92 115-100-10 51-47 84-115 100z" fill="#42663f"/>
+  </g>
+  <g filter="url(#shadow)" transform="rotate(-13 468 360)">
+    <rect x="256" y="256" width="416" height="220" rx="8" fill="#fff7e8"/>
+    <path d="M292 330h320M292 390h280" stroke="#a47a43" stroke-opacity="0.5" stroke-linecap="round" stroke-width="6"/>
+    <text x="292" y="304" fill="#a9412d" font-family="Georgia, serif" font-size="42" font-style="italic">pantry</text>
+    <text x="292" y="372" fill="#25180f" font-family="Georgia, serif" font-size="35">beans, rice, oats</text>
+    <text x="292" y="434" fill="#25180f" font-family="Georgia, serif" font-size="35">yogurt, carrots</text>
+  </g>
+  <rect width="1800" height="1200" fill="#1b110b" opacity="0.16"/>
+</svg>

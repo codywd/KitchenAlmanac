@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">KitchenAlmanac icon</title>
+  <desc id="desc">A tomato-red square with a simple cream fork, spoon, and leaf mark.</desc>
+  <rect width="512" height="512" fill="#a9412d"/>
+  <circle cx="256" cy="256" r="178" fill="#fff7e8"/>
+  <path fill="#42663f" d="M263 148c56 3 97 37 116 92-55 3-101-23-116-92Z"/>
+  <path fill="#25180f" d="M176 150h24v198c0 16-11 29-24 29s-24-13-24-29V150h24Zm-40 0h20v76h-20v-76Zm60 0h20v76h-20v-76Z"/>
+  <path fill="#25180f" d="M319 146c34 0 61 35 61 79 0 35-18 65-43 75v49c0 16-11 29-24 29s-24-13-24-29V146h30Z"/>
+</svg>

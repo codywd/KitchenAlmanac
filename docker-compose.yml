@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kitchenalmanac-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kitchenalmanac
+      POSTGRES_PASSWORD: kitchenalmanac
+      POSTGRES_USER: kitchenalmanac
+    ports:
+      - "54329:5432"
+    volumes:
+      - kitchenalmanac-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kitchenalmanac -d kitchenalmanac"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kitchenalmanac-postgres:

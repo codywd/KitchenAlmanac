@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">KitchenAlmanac maskable icon</title>
+  <desc id="desc">A centered fork, spoon, and leaf mark with extra safe padding for maskable app icons.</desc>
+  <rect width="512" height="512" fill="#a9412d"/>
+  <circle cx="256" cy="256" r="150" fill="#fff7e8"/>
+  <path fill="#42663f" d="M267 169c46 4 78 31 94 76-45 2-82-20-94-76Z"/>
+  <path fill="#25180f" d="M184 170h20v158c0 14-9 24-20 24s-20-10-20-24V170h20Zm-33 0h17v62h-17v-62Zm49 0h17v62h-17v-62Z"/>
+  <path fill="#25180f" d="M315 168c28 0 50 29 50 65 0 29-15 54-36 62v34c0 14-9 24-20 24s-20-10-20-24V168h26Z"/>
+</svg>
