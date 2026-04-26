@@ -156,6 +156,13 @@ export const passwordChangeSchema = z.object({
   newPassword: z.string().min(8),
 });
 
+export const apiKeyExpiryDaysSchema = z.enum(["30", "90", "180"]).default("90");
+
+export const apiKeyCreateSchema = z.object({
+  expiresInDays: apiKeyExpiryDaysSchema,
+  name: z.string().trim().min(1),
+});
+
 export const mealVoteSchema = z.object({
   comment: z.string().trim().optional(),
   mealId: z.string().min(1),

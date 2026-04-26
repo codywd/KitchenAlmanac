@@ -1,9 +1,11 @@
 import { revalidatePath } from "next/cache";
 
 import { authenticateRequest } from "@/lib/api-auth";
+import { secureMutationRequest } from "@/lib/api-route-security";
 import { canManagePlans } from "@/lib/family";
 import { refreshGroceryListForFamilyWeek } from "@/lib/grocery-api";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,20 @@ export async function POST(
 
   try {
     const { weekId } = await context.params;
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "grocery-list-refresh-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
     const result = await refreshGroceryListForFamilyWeek({
       familyId: auth.family.id,
       weekId,

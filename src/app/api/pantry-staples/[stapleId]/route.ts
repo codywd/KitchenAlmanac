@@ -3,8 +3,13 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { setPantryStapleActiveForFamily } from "@/lib/pantry-staples";
 import { pantryStaplePatchSchema } from "@/lib/schemas";
 
@@ -32,7 +37,21 @@ export async function PATCH(
 
   try {
     const { stapleId } = await context.params;
-    const payload = pantryStaplePatchSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "pantry-staple-write-api",
+        subject: `${auth.family.id}:${userId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = pantryStaplePatchSchema.parse(await readJsonWithLimit(request));
     const pantryStaple = await setPantryStapleActiveForFamily({
       active: payload.active,
       familyId: auth.family.id,

@@ -156,6 +156,7 @@ describe("family member actions", () => {
     expect(tx.user.update).toHaveBeenCalledWith({
       data: {
         name: "Existing Person",
+        mustChangePassword: true,
         passwordHash: "hashed:new-temporary-password",
       },
       where: {

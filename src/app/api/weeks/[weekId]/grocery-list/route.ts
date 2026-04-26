@@ -1,7 +1,12 @@
 import { authenticateRequest } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { getDb } from "@/lib/db";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { groceryListSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +27,21 @@ export async function POST(
 
   try {
     const { weekId } = await context.params;
-    const payload = groceryListSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "grocery-list-write-api",
+        subject: `${auth.family.id}:${auth.actorUserId ?? auth.authType}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = groceryListSchema.parse(await readJsonWithLimit(request));
     const week = await getDb().week.findFirst({
       where: {
         familyId: auth.family.id,

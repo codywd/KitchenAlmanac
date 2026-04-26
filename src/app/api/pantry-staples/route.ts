@@ -3,8 +3,13 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import {
   listPantryStaplesForFamily,
   upsertPantryStapleForFamily,
@@ -52,7 +57,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const payload = pantryStapleCreateSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "pantry-staple-write-api",
+        subject: `${auth.family.id}:${userId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = pantryStapleCreateSchema.parse(await readJsonWithLimit(request));
     const pantryStaple = await upsertPantryStapleForFamily({
       displayName: payload.displayName,
       familyId: auth.family.id,

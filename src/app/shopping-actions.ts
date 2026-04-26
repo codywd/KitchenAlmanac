@@ -12,6 +12,8 @@ import {
 } from "@/lib/schemas";
 import { revalidateShoppingSurfaces } from "@/lib/shopping-revalidation";
 import { upsertShoppingItemStatusForFamily } from "@/lib/shopping-status";
+import { assertRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
+import { getActionRequestMetadata } from "@/lib/request-context";
 
 export type PantryStapleActionState = {
   error?: string;
@@ -20,6 +22,7 @@ export type PantryStapleActionState = {
 
 export async function setShoppingItemStatusAction(formData: FormData) {
   const context = await requireFamilyContext();
+  const requestMeta = await getActionRequestMetadata();
   const parsed = shoppingItemStatusUpdateSchema.safeParse({
     canonicalName: formData.get("canonicalName") || undefined,
     itemName: formData.get("itemName"),
@@ -35,6 +38,14 @@ export async function setShoppingItemStatusAction(formData: FormData) {
   const payload = parsed.data;
 
   try {
+    await assertRateLimit({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      policy: rateLimitPolicies.shoppingWrite,
+      requestMeta,
+      scope: "shopping-write-action",
+      subject: `${context.family.id}:${context.user.id}:${payload.weekId}`,
+    });
     const state = await upsertShoppingItemStatusForFamily({
       familyId: context.family.id,
       payload,

@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordAuditEvent } from "@/lib/audit";
+import { createApiKeyExpiryDate } from "@/lib/api-key-security";
 import { createApiKeyMaterial } from "@/lib/auth";
 import { addDays, parseDateOnly, startOfMealPlanWeek, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
@@ -20,9 +22,11 @@ import {
   loadPlanningBriefContext,
 } from "@/lib/planning-brief";
 import { parseJsonWithRepair } from "@/lib/json-repair";
+import { assertRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { normalizeImportedRecipe } from "@/lib/recipe-import";
 import { importMealPlanForFamily } from "@/lib/recipe-import-service";
-import { rejectedMealCreateSchema } from "@/lib/schemas";
+import { getActionRequestMetadata } from "@/lib/request-context";
+import { apiKeyCreateSchema, rejectedMealCreateSchema } from "@/lib/schemas";
 
 export type ApiKeyActionState = {
   error?: string;
@@ -341,18 +345,25 @@ export async function createApiKeyAction(
   formData: FormData,
 ): Promise<ApiKeyActionState> {
   const context = await requireFamilyContext();
+  const requestMeta = await getActionRequestMetadata();
   assertCanManageApiKeys(context.role);
-  const name = String(formData.get("name") ?? "").trim();
+  const parsed = apiKeyCreateSchema.safeParse({
+    expiresInDays: formData.get("expiresInDays") || "90",
+    name: formData.get("name"),
+  });
 
-  if (!name) {
+  if (!parsed.success) {
     return { error: "Name the API key before creating it." };
   }
 
+  const { expiresInDays, name } = parsed.data;
   const material = createApiKeyMaterial(name);
+  const expiresAt = createApiKeyExpiryDate(Number(expiresInDays) as 30 | 90 | 180);
 
-  await getDb().apiKey.create({
+  const key = await getDb().apiKey.create({
     data: {
       createdByUserId: context.user.id,
+      expiresAt,
       familyId: context.family.id,
       keyHash: material.hash,
       keyPrefix: material.prefix,
@@ -361,6 +372,19 @@ export async function createApiKeyAction(
   });
 
   revalidatePath("/api-keys");
+  await recordAuditEvent({
+    actorUserId: context.user.id,
+    familyId: context.family.id,
+    metadata: {
+      expiresAt: expiresAt.toISOString(),
+      keyPrefix: material.prefix,
+    },
+    outcome: "success",
+    requestMeta,
+    subjectId: key.id,
+    subjectType: "api-key",
+    type: "api_key.create",
+  });
 
   return {
     plainTextKey: material.plainTextKey,
@@ -369,7 +393,9 @@ export async function createApiKeyAction(
 
 export async function revokeApiKeyAction(formData: FormData) {
   const context = await requireFamilyContext();
+  const requestMeta = await getActionRequestMetadata();
   assertCanManageApiKeys(context.role);
+  const id = String(formData.get("id"));
 
   await getDb().apiKey.updateMany({
     data: {
@@ -377,11 +403,20 @@ export async function revokeApiKeyAction(formData: FormData) {
     },
     where: {
       familyId: context.family.id,
-      id: String(formData.get("id")),
+      id,
     },
   });
 
   revalidatePath("/api-keys");
+  await recordAuditEvent({
+    actorUserId: context.user.id,
+    familyId: context.family.id,
+    outcome: "success",
+    requestMeta,
+    subjectId: id,
+    subjectType: "api-key",
+    type: "api_key.revoke",
+  });
 }
 
 export async function importMealPlanAction(
@@ -389,11 +424,20 @@ export async function importMealPlanAction(
   formData: FormData,
 ): Promise<ImportMealPlanActionState> {
   const context = await requireFamilyContext("/import");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManagePlans(context.role);
   const weekStart = parseDateOnly(String(formData.get("weekStart")));
   const planJson = String(formData.get("planJson") ?? "");
 
   try {
+    await assertRateLimit({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      policy: rateLimitPolicies.importPlan,
+      requestMeta,
+      scope: "import-plan-action",
+      subject: `${context.family.id}:${context.user.id}`,
+    });
     const plan = parseJsonWithRepair(planJson).value;
     const reviewContext = toImportReviewContext({
       budgetTargetCents: await getLatestFamilyBudgetTargetCents(context.family.id),
@@ -426,6 +470,15 @@ export async function importMealPlanAction(
     revalidatePath("/import");
     revalidatePath("/meal-memory");
     revalidatePath(`/weeks/${result.week.id}`);
+    await recordAuditEvent({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      outcome: "success",
+      requestMeta,
+      subjectId: result.week.id,
+      subjectType: "week",
+      type: "meal_plan.import",
+    });
 
     return {
       message: `Imported ${result.importedRecipeCount} recipes for ${toDateOnly(
@@ -434,6 +487,13 @@ export async function importMealPlanAction(
       weekId: result.week.id,
     };
   } catch (error) {
+    await recordAuditEvent({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      outcome: "failure",
+      requestMeta,
+      type: "meal_plan.import",
+    });
     return {
       error:
         error instanceof Error

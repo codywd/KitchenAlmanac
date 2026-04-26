@@ -4,9 +4,14 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
 import { saveMealOutcomeForFamily } from "@/lib/meal-outcomes-api";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import { mealOutcomeSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +38,21 @@ export async function POST(
 
   try {
     const { mealId } = await context.params;
-    const payload = mealOutcomeSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "meal-outcome-write-api",
+        subject: `${auth.family.id}:${userId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = mealOutcomeSchema.parse(await readJsonWithLimit(request));
     const result = await saveMealOutcomeForFamily({
       familyId: auth.family.id,
       mealId,

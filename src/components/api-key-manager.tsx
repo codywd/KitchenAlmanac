@@ -17,6 +17,15 @@ export function ApiKeyManager() {
           name="name"
           placeholder="Outside LLM, phone shortcut, kitchen tablet..."
         />
+        <select
+          className="ka-field sm:w-40"
+          defaultValue="90"
+          name="expiresInDays"
+        >
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="180">180 days</option>
+        </select>
         <button
           className="ka-button disabled:opacity-60"
           disabled={pending}

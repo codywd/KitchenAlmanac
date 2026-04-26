@@ -15,7 +15,9 @@ import {
   toPlanningSessionView,
   type PlanningSessionView,
 } from "@/lib/planning-session";
+import { assertRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 import { importMealPlanForFamily } from "@/lib/recipe-import-service";
+import { getActionRequestMetadata } from "@/lib/request-context";
 
 export type PlanningSessionActionState = {
   error?: string;
@@ -92,9 +94,18 @@ export async function savePlanningSessionPromptAction(
   formData: FormData,
 ): Promise<PlanningSessionActionState> {
   const context = await requireFamilyContext("/planner");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManagePlans(context.role);
 
   try {
+    await assertRateLimit({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      policy: rateLimitPolicies.planningWrite,
+      requestMeta,
+      scope: "planning-write-action",
+      subject: `${context.family.id}:${context.user.id}`,
+    });
     const fields = readSessionFields(formData);
     const session = await getDb().planningSession.upsert({
       create: {
@@ -142,9 +153,18 @@ export async function savePlanningSessionPlanAction(
   formData: FormData,
 ): Promise<PlanningSessionActionState> {
   const context = await requireFamilyContext("/planner");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManagePlans(context.role);
 
   try {
+    await assertRateLimit({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      policy: rateLimitPolicies.planningWrite,
+      requestMeta,
+      scope: "planning-write-action",
+      subject: `${context.family.id}:${context.user.id}`,
+    });
     const fields = readSessionFields(formData);
     const planJsonText = repairPlanJsonTextIfPossible(
       readText(formData, "planJsonText").trim(),
@@ -200,9 +220,18 @@ export async function importPlanningSessionAction(
   formData: FormData,
 ): Promise<PlanningSessionActionState> {
   const context = await requireFamilyContext("/planner");
+  const requestMeta = await getActionRequestMetadata();
   assertCanManagePlans(context.role);
 
   try {
+    await assertRateLimit({
+      actorUserId: context.user.id,
+      familyId: context.family.id,
+      policy: rateLimitPolicies.importPlan,
+      requestMeta,
+      scope: "planning-import-action",
+      subject: `${context.family.id}:${context.user.id}`,
+    });
     const sessionId = readTrimmedText(formData, "sessionId");
 
     if (!sessionId) {

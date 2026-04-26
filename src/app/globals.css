@@ -356,6 +356,13 @@ body::before {
   padding: 0.8rem 0.95rem;
 }
 
+.ka-alert {
+  background: rgba(245, 200, 91, 0.22);
+  border-left: 3px solid var(--brass);
+  color: #79501d;
+  padding: 0.8rem 0.95rem;
+}
+
 .ka-success {
   background: rgba(66, 102, 63, 0.13);
   border-left: 3px solid var(--herb);

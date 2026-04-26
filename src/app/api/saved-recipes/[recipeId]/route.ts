@@ -4,8 +4,13 @@ import {
   authenticateRequest,
   getAuthenticatedActorUserId,
 } from "@/lib/api-auth";
+import {
+  readJsonWithLimit,
+  secureMutationRequest,
+} from "@/lib/api-route-security";
 import { canManagePlans } from "@/lib/family";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
+import { rateLimitPolicies } from "@/lib/rate-limit";
 import {
   getSavedRecipeForFamily,
   updateSavedRecipeForFamily,
@@ -55,7 +60,21 @@ export async function PATCH(
 
   try {
     const { recipeId } = await context.params;
-    const payload = savedRecipePatchSchema.parse(await request.json());
+    const securityResponse = await secureMutationRequest({
+      auth,
+      rateLimit: {
+        policy: rateLimitPolicies.planningWrite,
+        scope: "saved-recipe-write-api",
+        subject: `${auth.family.id}:${userId}`,
+      },
+      request,
+    });
+
+    if (securityResponse) {
+      return securityResponse;
+    }
+
+    const payload = savedRecipePatchSchema.parse(await readJsonWithLimit(request));
     const savedRecipe = await updateSavedRecipeForFamily({
       familyId: auth.family.id,
       payload,

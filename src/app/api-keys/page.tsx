@@ -3,6 +3,7 @@ import { ApiKeyManager } from "@/components/api-key-manager";
 import { AppShell } from "@/components/app-shell";
 import { PageIntro } from "@/components/page-intro";
 import { Section } from "@/components/section";
+import { describeApiKeyExpiry } from "@/lib/api-key-security";
 import { getDb } from "@/lib/db";
 import { canManageApiKeys, requireFamilyContext } from "@/lib/family";
 
@@ -59,6 +60,7 @@ export default async function ApiKeysPage() {
                   {key.lastUsedAt
                     ? ` · Last used ${key.lastUsedAt.toISOString().slice(0, 10)}`
                     : ""}
+                  {` · ${describeApiKeyExpiry(key.expiresAt)}`}
                 </div>
               </div>
               {key.revokedAt ? (

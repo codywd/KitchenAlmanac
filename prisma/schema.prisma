@@ -57,8 +57,11 @@ model User {
   email                    String              @unique
   name                     String?
   passwordHash             String
+  mustChangePassword       Boolean             @default(false)
+  passwordChangedAt        DateTime?
   createdAt                DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
+  auditEvents              AuditEvent[]
   sessions                 Session[]
   familyMembership         FamilyMember?
   createdApiKeys           ApiKey[]            @relation("ApiKeyCreator")
@@ -91,6 +94,7 @@ model Family {
   name               String
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  auditEvents        AuditEvent[]
   members            FamilyMember[]
   apiKeys            ApiKey[]
   householdDocuments HouseholdDocument[]
@@ -394,4 +398,44 @@ model MealVote {
 
   @@unique([mealId, userId])
   @@index([userId])
+}
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  type        String
+  outcome     String
+  familyId    String?
+  actorUserId String?
+  requestId   String?
+  subjectType String?
+  subjectId   String?
+  message     String?
+  metadata    Json?
+  ipHash      String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  family      Family?  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
+model RateLimitBucket {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  scope           String
+  subject         String
+  count           Int      @default(0)
+  windowStart     DateTime
+  windowExpiresAt DateTime
+  blockedUntil    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([scope, subject])
+  @@index([windowExpiresAt])
+  @@index([blockedUntil])
 }
