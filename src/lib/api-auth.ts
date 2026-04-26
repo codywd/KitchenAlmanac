@@ -11,6 +11,10 @@ export type AuthenticatedRequest = {
   user: CurrentUser | null;
 };
 
+export function getAuthenticatedActorUserId(auth: AuthenticatedRequest) {
+  return auth.actorUserId ?? auth.user?.id ?? null;
+}
+
 function extractApiKey(request: Request) {
   const authorization = request.headers.get("authorization");
   const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];

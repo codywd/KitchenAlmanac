@@ -40,6 +40,9 @@ vi.mock("next/cache", () => ({
 
 function makeDb({
   meal = {
+    dayPlan: {
+      weekId: "week_1",
+    },
     id: "meal_1",
     name: "Turkey Bowls",
   },
@@ -123,6 +126,13 @@ describe("saveMealOutcomeAction", () => {
       weekId: "week_1",
     });
     expect(db.meal.findFirst).toHaveBeenCalledWith({
+      include: {
+        dayPlan: {
+          select: {
+            weekId: true,
+          },
+        },
+      },
       where: {
         dayPlan: {
           week: {

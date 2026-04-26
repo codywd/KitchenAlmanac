@@ -1,4 +1,7 @@
-import { authenticateRequest } from "@/lib/api-auth";
+import {
+  authenticateRequest,
+  getAuthenticatedActorUserId,
+} from "@/lib/api-auth";
 import { badRequest, forbidden, json, notFound, unauthorized } from "@/lib/http";
 import { shoppingItemStatusUpdateSchema } from "@/lib/schemas";
 import { revalidateShoppingSurfaces } from "@/lib/shopping-revalidation";
@@ -16,8 +19,10 @@ export async function POST(
     return unauthorized();
   }
 
-  if (auth.authType !== "session" || !auth.user) {
-    return forbidden("Shopping updates require a signed-in family member.");
+  const userId = getAuthenticatedActorUserId(auth);
+
+  if (!userId) {
+    return forbidden("Shopping updates require an API key created by a user or a signed-in family member.");
   }
 
   try {
@@ -29,7 +34,7 @@ export async function POST(
     const shoppingItemState = await upsertShoppingItemStatusForFamily({
       familyId: auth.family.id,
       payload,
-      userId: auth.user.id,
+      userId,
     });
 
     if (!shoppingItemState) {

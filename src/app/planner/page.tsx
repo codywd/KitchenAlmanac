@@ -1,18 +1,21 @@
-import { ArrowRight, ClipboardList, RefreshCw, Upload } from "lucide-react";
+import { ArrowRight, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
 import { PageIntro } from "@/components/page-intro";
-import { PlannerBriefCopy } from "@/components/planner-brief-copy";
+import { PlanningSessionWorkspace } from "@/components/planning-session-workspace";
 import { Section } from "@/components/section";
 import { formatMoney } from "@/lib/dates";
+import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import { toImportReviewContext } from "@/lib/import-review";
 import {
   buildPlanningBriefResponse,
   getLatestFamilyBudgetTargetCents,
   loadPlanningBriefContext,
   parsePlanningBriefQuery,
 } from "@/lib/planning-brief";
+import { toPlanningSessionView } from "@/lib/planning-session";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +100,18 @@ export default async function PlannerPage({
     generatedAt: new Date().toISOString(),
     weekStart: query.weekStart,
   });
+  const planningSession = await getDb().planningSession.findUnique({
+    where: {
+      familyId_weekStart: {
+        familyId: familyContext.family.id,
+        weekStart: query.weekStart,
+      },
+    },
+  });
+  const reviewContext = toImportReviewContext({
+    budgetTargetCents: query.budgetTargetCents,
+    planningContext: context,
+  });
 
   return (
     <AppShell
@@ -108,15 +123,15 @@ export default async function PlannerPage({
         <PageIntro
           actions={
             <Link className="ka-button-secondary gap-2" href="/import">
-              Import weekly JSON
+              Manual import
               <ArrowRight size={16} />
             </Link>
           }
           eyebrow="Planning brief"
           title="Next Week Builder"
         >
-          Generate a family-scoped brief, paste it into the outside LLM, then
-          import the returned weekly JSON through the existing import flow.
+          Save a family-scoped planning session, copy the ChatGPT prompt, then
+          review and import the returned weekly JSON.
         </PageIntro>
 
         {parseError ? (
@@ -195,53 +210,20 @@ export default async function PlannerPage({
         </div>
 
         <Section
-          description={`Generated ${new Intl.DateTimeFormat("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }).format(new Date(response.generatedAt))}. Local notes are included only when copied.`}
-          title="Copy Brief"
+          description="The saved session keeps the exact copied prompt and returned JSON so the manual ChatGPT handoff can survive page reloads."
+          title="Planning Session"
         >
-          <PlannerBriefCopy briefMarkdown={response.briefMarkdown} />
-        </Section>
-
-        <Section title="Workflow">
-          <div className="grid gap-3 md:grid-cols-3">
-            {[
-              {
-                icon: ClipboardList,
-                text: "Copy the brief with any local notes.",
-                title: "Generate",
-              },
-              {
-                icon: ArrowRight,
-                text: "Paste it into the outside LLM and ask for weekly JSON.",
-                title: "Plan",
-              },
-              {
-                icon: Upload,
-                text: "Paste the returned JSON into the import page.",
-                title: "Import",
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div className="ka-panel border border-[var(--line)]" key={item.title}>
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-10 place-items-center bg-[rgba(66,102,63,0.12)] text-[var(--herb-dark)]">
-                      <Icon size={18} />
-                    </span>
-                    <h2 className="text-base font-black text-[var(--ink)]">
-                      {item.title}
-                    </h2>
-                  </div>
-                  <p className="mt-3 text-sm font-semibold leading-6 text-[var(--muted-ink)]">
-                    {item.text}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+          <PlanningSessionWorkspace
+            briefMarkdown={response.briefMarkdown}
+            budgetTargetCents={query.budgetTargetCents}
+            generatedAt={response.generatedAt}
+            initialSession={
+              planningSession ? toPlanningSessionView(planningSession) : null
+            }
+            reviewContext={reviewContext}
+            weekEnd={response.weekEnd}
+            weekStart={response.weekStart}
+          />
         </Section>
       </div>
     </AppShell>

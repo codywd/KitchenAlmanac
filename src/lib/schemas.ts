@@ -3,6 +3,24 @@ import { z } from "zod";
 export const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const familyRoleSchema = z.enum(["OWNER", "ADMIN", "MEMBER"]);
+export const householdDocumentKindSchema = z.enum([
+  "HOUSEHOLD_PROFILE",
+  "MEDICAL_GUIDELINES",
+  "BATCH_PREP_PATTERNS",
+]);
+export const mealFeedbackStatusSchema = z.enum([
+  "PLANNED",
+  "LIKED",
+  "WORKED_WITH_TWEAKS",
+  "REJECTED",
+]);
+export const mealOutcomeStatusSchema = z.enum([
+  "PLANNED",
+  "COOKED",
+  "SKIPPED",
+  "REPLACED",
+  "LEFTOVERS",
+]);
 export const mealVoteValueSchema = z.enum(["WANT", "OKAY", "NO"]);
 export const shoppingItemStatusSchema = z.enum([
   "NEEDED",
@@ -32,6 +50,16 @@ export const validationFlagsSchema = z.object({
   weeknightTimeSafe: z.boolean().default(false),
 });
 
+export const validationFlagsPatchSchema = z.object({
+  budgetFit: z.boolean().optional(),
+  diabetesFriendly: z.boolean().optional(),
+  heartHealthy: z.boolean().optional(),
+  kidFriendly: z.boolean().optional(),
+  noFishSafe: z.boolean().optional(),
+  validationNotes: z.string().optional(),
+  weeknightTimeSafe: z.boolean().optional(),
+});
+
 export const mealUpsertSchema = z.object({
   batchPrepNote: z.string().optional(),
   costEstimateCents: z.number().int().nonnegative().optional(),
@@ -54,15 +82,27 @@ export const mealUpsertSchema = z.object({
 });
 
 export const mealPatchSchema = mealUpsertSchema.partial().extend({
-  validation: validationFlagsSchema.partial().optional(),
+  validation: validationFlagsPatchSchema.optional(),
 });
 
 export const feedbackSchema = z.object({
   createRejectedPattern: z.boolean().default(false),
   patternToAvoid: z.string().optional(),
   reason: z.string().optional(),
-  status: z.enum(["PLANNED", "LIKED", "WORKED_WITH_TWEAKS", "REJECTED"]),
+  status: mealFeedbackStatusSchema,
   tweaks: z.string().optional(),
+});
+
+export const mealOutcomeSchema = z.object({
+  actualCostCents: z.number().int().nonnegative().optional().nullable(),
+  createRejectedPattern: z.boolean().default(false),
+  feedbackReason: z.string().optional(),
+  feedbackStatus: mealFeedbackStatusSchema,
+  feedbackTweaks: z.string().optional(),
+  leftoverNotes: z.string().optional(),
+  outcomeNotes: z.string().optional(),
+  outcomeStatus: mealOutcomeStatusSchema,
+  patternToAvoid: z.string().optional(),
 });
 
 export const rejectedMealCreateSchema = z.object({
@@ -132,4 +172,78 @@ export const pantryStapleCreateSchema = z.object({
 
 export const pantryStapleDeactivateSchema = z.object({
   stapleId: z.string().min(1),
+});
+
+export const activeFilterSchema = z.enum(["true", "false", "all"]).default("true");
+
+export const pantryStaplePatchSchema = z.object({
+  active: z.boolean(),
+});
+
+export const householdDocumentUpsertSchema = z.object({
+  content: z.string(),
+  title: z.string().trim().min(1).optional(),
+});
+
+const savedRecipeSchemaShape = {
+  active: z.boolean().default(true),
+  actualCostCents: z.number().int().nonnegative().optional().nullable(),
+  batchPrepNote: z.string().optional().nullable(),
+  costEstimateCents: z.number().int().nonnegative().optional().nullable(),
+  cuisine: z.string().optional().nullable(),
+  feedbackReason: z.string().optional().nullable(),
+  feedbackStatus: mealFeedbackStatusSchema.optional().nullable(),
+  feedbackTweaks: z.string().optional().nullable(),
+  ingredients: z.array(ingredientSchema).default([]),
+  kidAdaptations: z.string().optional().nullable(),
+  leftoverNotes: z.string().optional().nullable(),
+  methodSteps: z.array(z.string().min(1)).default([]),
+  name: z.string().min(1),
+  outcomeNotes: z.string().optional().nullable(),
+  outcomeStatus: mealOutcomeStatusSchema.optional().nullable(),
+  prepTimeActiveMinutes: z.number().int().nonnegative().optional().nullable(),
+  prepTimeTotalMinutes: z.number().int().nonnegative().optional().nullable(),
+  servings: z.number().int().positive().default(7),
+  sourceRecipe: z.unknown().optional().nullable(),
+  validation: validationFlagsSchema.default({
+    budgetFit: false,
+    diabetesFriendly: false,
+    heartHealthy: false,
+    kidFriendly: false,
+    noFishSafe: false,
+    weeknightTimeSafe: false,
+  }),
+};
+
+export const savedRecipeCreateSchema = z.object(savedRecipeSchemaShape);
+
+export const savedRecipePatchSchema = z.object({
+  active: z.boolean().optional(),
+  actualCostCents: z.number().int().nonnegative().optional().nullable(),
+  batchPrepNote: z.string().optional().nullable(),
+  costEstimateCents: z.number().int().nonnegative().optional().nullable(),
+  cuisine: z.string().optional().nullable(),
+  feedbackReason: z.string().optional().nullable(),
+  feedbackStatus: mealFeedbackStatusSchema.optional().nullable(),
+  feedbackTweaks: z.string().optional().nullable(),
+  ingredients: z.array(ingredientSchema).optional(),
+  kidAdaptations: z.string().optional().nullable(),
+  leftoverNotes: z.string().optional().nullable(),
+  methodSteps: z.array(z.string().min(1)).optional(),
+  name: z.string().min(1).optional(),
+  outcomeNotes: z.string().optional().nullable(),
+  outcomeStatus: mealOutcomeStatusSchema.optional().nullable(),
+  prepTimeActiveMinutes: z.number().int().nonnegative().optional().nullable(),
+  prepTimeTotalMinutes: z.number().int().nonnegative().optional().nullable(),
+  servings: z.number().int().positive().optional(),
+  sourceRecipe: z.unknown().optional().nullable(),
+  validation: validationFlagsPatchSchema.optional(),
+});
+
+export const savedRecipeFromMealSchema = z.object({
+  mealId: z.string().min(1),
+});
+
+export const savedRecipeSwapSchema = z.object({
+  recipeId: z.string().min(1),
 });

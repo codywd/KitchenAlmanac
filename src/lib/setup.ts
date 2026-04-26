@@ -90,7 +90,7 @@ export function buildSetupStatus(
     {
       actionLabel: canManage ? "Plan first week" : undefined,
       complete: hasFirstPlan,
-      detail: "Generate a planning brief, use the outside LLM, then import the first weekly JSON.",
+      detail: "Create a planning session, use ChatGPT, then import the first reviewed weekly JSON.",
       href: canManage ? "/planner" : undefined,
       key: "first-plan",
       metric: `${pluralize(input.weekCount, "week")} / ${pluralize(input.dinnerCount, "dinner")}`,

@@ -1,0 +1,167 @@
+openapi: 3.0.3
+info:
+  title: Kitchen Almanac Session-Only API Reference
+  version: "1.0.0"
+  description: >
+    Deprecated historical reference. The shopping item endpoint is now included
+    in meal-planning-custom-gpt.openapi.yaml and accepts Bearer family API keys
+    with API-key creator attribution.
+servers:
+  - url: https://meals.dostal.co
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+security:
+  - sessionCookie: []
+paths:
+  /api/weeks/{weekId}/shopping-items:
+    post:
+      operationId: updateShoppingItemStatus
+      summary: Update one shopping item status
+      description: >
+        Deprecated reference shape. Prefer the Bearer-auth operation in
+        meal-planning-custom-gpt.openapi.yaml.
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShoppingItemStatusUpdateRequest"
+      responses:
+        "200":
+          description: Shopping item status updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - shoppingItemState
+                  - weekId
+                properties:
+                  message:
+                    type: string
+                  weekId:
+                    type: string
+                  shoppingItemState:
+                    $ref: "#/components/schemas/ShoppingItemState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: kitchenalmanac_session
+      description: HTTP-only session cookie set by the app login flow.
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid authentication.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Authentication required.
+    Forbidden:
+      description: Authenticated caller does not have access.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Shopping updates require a signed-in family member.
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+    ShoppingItemStatus:
+      type: string
+      enum:
+        - NEEDED
+        - BOUGHT
+        - ALREADY_HAVE
+    ShoppingItemStatusUpdateRequest:
+      type: object
+      required:
+        - itemName
+        - status
+      properties:
+        itemName:
+          type: string
+          minLength: 1
+        canonicalName:
+          type: string
+        quantity:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ShoppingItemStatus"
+    ShoppingItemState:
+      type: object
+      required:
+        - canonicalName
+        - itemName
+        - status
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        weekId:
+          type: string
+        canonicalName:
+          type: string
+        itemName:
+          type: string
+        quantity:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ShoppingItemStatus"
+        updatedByUserId:
+          type: string
+          nullable: true
+        updatedBy:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            name:
+              type: string
+              nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

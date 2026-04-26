@@ -46,6 +46,12 @@ enum ShoppingItemStatus {
   ALREADY_HAVE
 }
 
+enum PlanningSessionStatus {
+  DRAFT
+  PLAN_PASTED
+  IMPORTED
+}
+
 model User {
   id                       String              @id @default(cuid())
   email                    String              @unique
@@ -58,6 +64,7 @@ model User {
   createdApiKeys           ApiKey[]            @relation("ApiKeyCreator")
   createdRejectedMeals     RejectedMeal[]      @relation("RejectedMealCreator")
   createdPantryStaples     PantryStaple[]      @relation("PantryStapleCreator")
+  createdPlanningSessions  PlanningSession[]   @relation("PlanningSessionCreator")
   createdSavedRecipes      SavedRecipe[]       @relation("SavedRecipeCreator")
   deactivatedPantryStaples PantryStaple[]      @relation("PantryStapleDeactivator")
   archivedSavedRecipes     SavedRecipe[]       @relation("SavedRecipeArchiver")
@@ -88,6 +95,7 @@ model Family {
   apiKeys            ApiKey[]
   householdDocuments HouseholdDocument[]
   pantryStaples      PantryStaple[]
+  planningSessions   PlanningSession[]
   rejectedMeals      RejectedMeal[]
   savedRecipes       SavedRecipe[]
   shoppingItemStates ShoppingItemState[]
@@ -155,10 +163,36 @@ model Week {
   family             Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
   days               DayPlan[]
   groceryList        GroceryList?
+  importedSessions   PlanningSession[]   @relation("PlanningSessionImportedWeek")
   shoppingItemStates ShoppingItemState[]
 
   @@unique([familyId, weekStart])
   @@index([familyId, weekStart])
+}
+
+model PlanningSession {
+  id                String                @id @default(cuid())
+  familyId          String
+  weekStart         DateTime
+  budgetTargetCents Int?
+  localNotes        String?
+  promptMarkdown    String
+  planJsonText      String?
+  status            PlanningSessionStatus @default(DRAFT)
+  importedWeekId    String?
+  createdByUserId   String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  family            Family                @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  importedWeek      Week?                 @relation("PlanningSessionImportedWeek", fields: [importedWeekId], references: [id], onDelete: SetNull)
+  createdBy         User?                 @relation("PlanningSessionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([familyId, weekStart])
+  @@index([familyId])
+  @@index([weekStart])
+  @@index([status])
+  @@index([importedWeekId])
+  @@index([createdByUserId])
 }
 
 model DayPlan {

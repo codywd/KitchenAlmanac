@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getDb } from "@/lib/db";
 import { mealVoteSchema } from "@/lib/schemas";
 import { requireFamilyContext } from "@/lib/family";
+import { upsertMealVoteForFamily } from "@/lib/meal-votes-api";
 
 export async function voteMealAction(formData: FormData) {
   const context = await requireFamilyContext();
@@ -14,47 +14,20 @@ export async function voteMealAction(formData: FormData) {
     vote: formData.get("vote"),
   });
 
-  const meal = await getDb().meal.findFirstOrThrow({
-    include: {
-      dayPlan: {
-        include: {
-          week: true,
-        },
-      },
-    },
-    where: {
-      dayPlan: {
-        week: {
-          familyId: context.family.id,
-        },
-      },
-      id: payload.mealId,
-    },
+  const vote = await upsertMealVoteForFamily({
+    familyId: context.family.id,
+    payload,
+    userId: context.user.id,
   });
 
-  await getDb().mealVote.upsert({
-    create: {
-      comment: payload.comment || null,
-      mealId: meal.id,
-      userId: context.user.id,
-      vote: payload.vote,
-    },
-    update: {
-      comment: payload.comment || null,
-      vote: payload.vote,
-    },
-    where: {
-      mealId_userId: {
-        mealId: meal.id,
-        userId: context.user.id,
-      },
-    },
-  });
+  if (!vote) {
+    throw new Error("Meal not found.");
+  }
 
   revalidatePath("/calendar");
   revalidatePath("/meal-memory");
-  revalidatePath(`/cook/${meal.id}`);
-  revalidatePath(`/weeks/${meal.dayPlan.week.id}`);
-  revalidatePath(`/weeks/${meal.dayPlan.week.id}/closeout`);
-  revalidatePath(`/weeks/${meal.dayPlan.week.id}/review`);
+  revalidatePath(`/cook/${payload.mealId}`);
+  revalidatePath(`/weeks/${vote.weekId}`);
+  revalidatePath(`/weeks/${vote.weekId}/closeout`);
+  revalidatePath(`/weeks/${vote.weekId}/review`);
 }

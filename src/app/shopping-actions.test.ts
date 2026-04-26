@@ -51,6 +51,7 @@ function makeDb({
 } = {}) {
   const db = {
     pantryStaple: {
+      findFirst: vi.fn(async () => ({ id: "staple_1" })),
       updateMany: vi.fn(async () => ({ count: 1 })),
       upsert: vi.fn(async () => ({ id: "staple_1" })),
     },

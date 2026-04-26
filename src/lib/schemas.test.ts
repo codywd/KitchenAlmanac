@@ -4,10 +4,16 @@ import {
   familyMemberCreateSchema,
   familyMemberPasswordResetSchema,
   familyMemberRemoveSchema,
+  householdDocumentUpsertSchema,
+  mealOutcomeSchema,
   mealVoteSchema,
   pantryStapleCreateSchema,
   pantryStapleDeactivateSchema,
+  pantryStaplePatchSchema,
   passwordChangeSchema,
+  savedRecipeCreateSchema,
+  savedRecipePatchSchema,
+  savedRecipeSwapSchema,
   shoppingItemStatusUpdateSchema,
 } from "./schemas";
 
@@ -94,5 +100,76 @@ describe("multi-user schemas", () => {
     expect(pantryStapleDeactivateSchema.parse({ stapleId: "staple_1" })).toEqual({
       stapleId: "staple_1",
     });
+    expect(pantryStaplePatchSchema.parse({ active: false })).toEqual({
+      active: false,
+    });
+  });
+
+  it("validates planner API document and recipe payloads", () => {
+    expect(
+      householdDocumentUpsertSchema.parse({
+        content: "Keep weeknights easy.",
+        title: "Household Profile",
+      }),
+    ).toEqual({
+      content: "Keep weeknights easy.",
+      title: "Household Profile",
+    });
+
+    expect(
+      savedRecipeCreateSchema.parse({
+        ingredients: [{ item: "Brown rice", quantity: "2 cups" }],
+        methodSteps: ["Cook rice."],
+        name: "Rice Bowls",
+      }),
+    ).toMatchObject({
+      active: true,
+      ingredients: [{ item: "Brown rice", quantity: "2 cups" }],
+      methodSteps: ["Cook rice."],
+      name: "Rice Bowls",
+      servings: 7,
+    });
+
+    expect(
+      savedRecipePatchSchema.parse({
+        active: false,
+        validation: {
+          budgetFit: true,
+        },
+      }),
+    ).toEqual({
+      active: false,
+      validation: {
+        budgetFit: true,
+      },
+    });
+
+    expect(savedRecipeSwapSchema.parse({ recipeId: "recipe_1" })).toEqual({
+      recipeId: "recipe_1",
+    });
+  });
+
+  it("validates meal closeout API payloads with cent amounts", () => {
+    expect(
+      mealOutcomeSchema.parse({
+        actualCostCents: 1875,
+        feedbackReason: "Everyone liked it.",
+        feedbackStatus: "LIKED",
+        outcomeStatus: "COOKED",
+      }),
+    ).toMatchObject({
+      actualCostCents: 1875,
+      feedbackReason: "Everyone liked it.",
+      feedbackStatus: "LIKED",
+      outcomeStatus: "COOKED",
+    });
+
+    expect(
+      mealOutcomeSchema.safeParse({
+        actualCostCents: -1,
+        feedbackStatus: "LIKED",
+        outcomeStatus: "COOKED",
+      }).success,
+    ).toBe(false);
   });
 });

@@ -2,10 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getDb } from "@/lib/db";
 import { assertCanManagePlans, requireFamilyContext } from "@/lib/family";
-import { buildRejectedMealFromFeedback } from "@/lib/feedback";
 import { normalizeFeedbackStatus } from "@/lib/feedback";
+import { saveMealOutcomeForFamily } from "@/lib/meal-outcomes-api";
 import { normalizeMealOutcomeStatus } from "@/lib/week-closeout";
 
 export type MealOutcomeActionState = {
@@ -60,76 +59,49 @@ export async function saveMealOutcomeAction(
   }
 
   const mealId = trimmed(formData, "mealId");
-  const meal = await getDb().meal.findFirst({
-    where: {
-      dayPlan: {
-        week: {
-          familyId: context.family.id,
-          id: weekId,
-        },
-      },
-      id: mealId,
-    },
-  });
-
-  if (!meal) {
-    return {
-      error: "Meal not found.",
-    };
-  }
-
   const feedbackReason = trimmed(formData, "feedbackReason");
   const feedbackTweaks = trimmed(formData, "feedbackTweaks");
   const leftoverNotes = trimmed(formData, "leftoverNotes");
   const outcomeNotes = trimmed(formData, "outcomeNotes");
   const patternToAvoid = trimmed(formData, "patternToAvoid");
   const createRejectedPattern = formData.get("createRejectedPattern") === "on";
-  const closedOut = outcomeStatus !== "PLANNED";
 
-  await getDb().meal.update({
-    data: {
+  const result = await saveMealOutcomeForFamily({
+    familyId: context.family.id,
+    mealId,
+    payload: {
       actualCostCents,
-      closedOutAt: closedOut ? new Date() : null,
-      closedOutByUserId: closedOut ? context.user.id : null,
-      feedbackReason: feedbackReason || null,
+      createRejectedPattern,
+      feedbackReason,
       feedbackStatus,
-      feedbackTweaks: feedbackTweaks || null,
-      leftoverNotes: leftoverNotes || null,
-      outcomeNotes: outcomeNotes || null,
+      feedbackTweaks,
+      leftoverNotes,
+      outcomeNotes,
       outcomeStatus,
+      patternToAvoid,
     },
-    where: {
-      id: meal.id,
-    },
+    userId: context.user.id,
+    weekId,
   });
 
-  if (feedbackStatus === "REJECTED" && createRejectedPattern) {
-    await getDb().rejectedMeal.create({
-      data: {
-        ...buildRejectedMealFromFeedback({
-          mealName: meal.name,
-          patternToAvoid,
-          reason: feedbackReason || "Rejected from meal closeout.",
-        }),
-        createdByUserId: context.user.id,
-        familyId: context.family.id,
-        sourceMealId: meal.id,
-      },
-    });
+  if (!result) {
+    return {
+      error: "Meal not found.",
+    };
   }
 
   revalidatePath("/calendar");
   revalidatePath("/meal-memory");
   revalidatePath("/planner");
   revalidatePath("/rejected-meals");
-  revalidatePath(`/cook/${meal.id}`);
+  revalidatePath(`/cook/${result.meal.id}`);
   revalidatePath(`/weeks/${weekId}`);
   revalidatePath(`/weeks/${weekId}/closeout`);
   revalidatePath(`/weeks/${weekId}/review`);
 
   return {
-    mealId: meal.id,
-    message: `Saved closeout for ${meal.name}.`,
+    mealId: result.meal.id,
+    message: `Saved closeout for ${result.meal.name}.`,
     weekId,
   };
 }

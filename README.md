@@ -109,16 +109,17 @@ Owners/admins can add and remove family pantry staples from the shopping page. A
 
 ## Planning Brief Workflow
 
-Owners/admins can open `/planner` to generate a copy-ready planning brief for the next target week. The brief is derived on demand from the family guidance documents, active rejected meals, saved recipes, recent meal votes/comments, recent meal history, closeout outcomes, grocery lists, pantry staples, ingredient signals, and family members. It is not saved and does not call an LLM.
+Owners/admins can open `/planner` to generate a persisted planning session for the next target week. The session stores the exact ChatGPT-ready prompt, local notes, and pasted weekly JSON so the manual ChatGPT Pro handoff can survive page reloads. The brief is derived on demand from the family guidance documents, active rejected meals, saved recipes, recent meal votes/comments, recent meal history, closeout outcomes, grocery lists, pantry staples, ingredient signals, and family members. It does not call an LLM.
 
 Workflow:
 
 1. Open `/planner`, adjust the target week and optional budget target.
-2. Add any local-only notes if needed.
-3. Copy the planner brief and paste it into the outside LLM.
-4. Import the returned weekly JSON through `/import` or `POST /api/import/meal-plan`.
+2. Add any local-only notes, then save and copy the ChatGPT prompt.
+3. Paste the prompt into ChatGPT and ask for weekly JSON.
+4. Paste the returned JSON back into the same planning session.
+5. Preview the import review, resolve blockers, then import the reviewed plan.
 
-Members can view shared planning surfaces and vote on meals, but cannot generate planner briefs. Family API keys can fetch the same brief context from `GET /api/planning-brief`.
+Members can view shared planning surfaces and vote on meals, but cannot generate planner sessions. Family API keys can fetch the same brief context from `GET /api/planning-brief`, and `/import` remains available as a standalone fallback for raw JSON imports.
 
 ## API Authentication
 
@@ -267,7 +268,7 @@ npm run build
 - Vote counts/comments appear on calendar tiles, week detail, cook view, and in `/api/household-profile`.
 - Family members open `/meal-memory` and see wanted meals, repeat candidates, avoid signals, member vote patterns, comment themes, and worked-well meals.
 - Owner/admin uses `/meal-memory` to mark a meal as liked and save an avoid pattern; member users do not see those controls.
-- Owner/admin opens `/planner`, changes week/budget, sees guidance/vote/rejection/history context in the generated brief, copies it, and imports returned JSON through `/import`.
+- Owner/admin opens `/planner`, changes week/budget, saves and copies the ChatGPT prompt, pastes returned JSON into the same session, previews the review, and imports the reviewed plan.
 - Owner/admin saves a worked-well meal to `/recipes`, edits recipe details, archives/restores it, and sees active recipes in the planner brief.
 - Owner/admin opens `/weeks/:weekId/review`, replaces one dinner from a saved recipe, and verifies the old votes disappear from the replacement.
 - Owner/admin swaps a dinner from `/weeks/:weekId/review`, opens `/ingredients?weekId=...`, reviews added/removed/changed grocery items, refreshes the stored grocery list, and confirms week detail shows the updated list.

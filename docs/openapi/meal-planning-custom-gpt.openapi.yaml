@@ -1,0 +1,2596 @@
+openapi: 3.0.3
+info:
+  title: Kitchen Almanac API for Custom GPT Actions
+  version: "1.0.0"
+  description: >
+    API-key-compatible endpoints for Kitchen Almanac. Configure a Custom GPT
+    action with API key authentication set to Bearer and paste a family API key
+    created in the app at /api-keys.
+servers:
+  - url: https://meals.dostal.co
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+security:
+  - bearerApiKey: []
+tags:
+  - name: Planning Context
+    description: Household guidance and planning brief context for outside planners.
+  - name: Meal Plan Import
+    description: Import outside-LLM weekly meal plans.
+  - name: Weeks
+    description: Week, day, meal, and grocery-list management.
+  - name: Meals
+    description: Dinner updates and feedback.
+  - name: Rejected Meals
+    description: Household avoid-list entries.
+paths:
+  /api/household-profile:
+    get:
+      tags:
+        - Planning Context
+      operationId: getHouseholdProfile
+      summary: Get household planning context
+      description: >
+        Returns family-scoped household guidance, active rejected meals, family
+        members, pantry staples, saved recipes, and recent meal-vote signals.
+      responses:
+        "200":
+          description: Household profile context.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdProfileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/planning-brief:
+    get:
+      tags:
+        - Planning Context
+      operationId: getPlanningBrief
+      summary: Generate a meal planning brief
+      description: >
+        Returns a markdown planning brief plus structured context. API-key
+        callers are treated as family admin callers.
+      parameters:
+        - name: weekStart
+          in: query
+          required: false
+          description: Target planning week start date. Defaults to the next planning week.
+          schema:
+            $ref: "#/components/schemas/DateOnly"
+        - name: budgetTargetCents
+          in: query
+          required: false
+          description: Positive integer budget target in cents.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Planning brief.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningBriefResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/household-documents:
+    get:
+      tags:
+        - Planning Context
+      operationId: listHouseholdDocuments
+      summary: List household guidance documents
+      responses:
+        "200":
+          description: Household guidance documents.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - documents
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HouseholdDocument"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/household-documents/{kind}:
+    put:
+      tags:
+        - Planning Context
+      operationId: upsertHouseholdDocument
+      summary: Upsert household guidance by kind
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/HouseholdDocumentKind"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseholdDocumentUpsertRequest"
+      responses:
+        "200":
+          description: Upserted household document.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - document
+                properties:
+                  document:
+                    $ref: "#/components/schemas/HouseholdDocument"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/saved-recipes:
+    get:
+      tags:
+        - Planning Context
+      operationId: listSavedRecipes
+      summary: List saved recipes
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+              - all
+            default: "true"
+      responses:
+        "200":
+          description: Saved recipes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - savedRecipes
+                properties:
+                  savedRecipes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SavedRecipe"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Planning Context
+      operationId: createSavedRecipe
+      summary: Create a saved recipe from JSON recipe fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedRecipeWriteRequest"
+      responses:
+        "201":
+          description: Created saved recipe.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - savedRecipe
+                properties:
+                  savedRecipe:
+                    $ref: "#/components/schemas/SavedRecipe"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/saved-recipes/from-meal:
+    post:
+      tags:
+        - Planning Context
+      operationId: saveMealToRecipeLibrary
+      summary: Save or refresh a saved recipe from an existing meal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedRecipeFromMealRequest"
+      responses:
+        "200":
+          description: Saved recipe result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  recipeId:
+                    type: string
+                  weekId:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/saved-recipes/{recipeId}:
+    get:
+      tags:
+        - Planning Context
+      operationId: getSavedRecipe
+      summary: Get full saved recipe details
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Saved recipe.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - savedRecipe
+                properties:
+                  savedRecipe:
+                    $ref: "#/components/schemas/SavedRecipe"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Planning Context
+      operationId: updateSavedRecipe
+      summary: Patch a saved recipe
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedRecipePatchRequest"
+      responses:
+        "200":
+          description: Updated saved recipe.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - savedRecipe
+                properties:
+                  savedRecipe:
+                    $ref: "#/components/schemas/SavedRecipe"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/pantry-staples:
+    get:
+      tags:
+        - Planning Context
+      operationId: listPantryStaples
+      summary: List pantry staples
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+              - all
+            default: "true"
+      responses:
+        "200":
+          description: Pantry staples.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - pantryStaples
+                properties:
+                  pantryStaples:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PantryStaple"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Planning Context
+      operationId: upsertPantryStaple
+      summary: Add or reactivate a pantry staple
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PantryStapleCreateRequest"
+      responses:
+        "201":
+          description: Pantry staple.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - pantryStaple
+                properties:
+                  pantryStaple:
+                    $ref: "#/components/schemas/PantryStaple"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/pantry-staples/{stapleId}:
+    patch:
+      tags:
+        - Planning Context
+      operationId: updatePantryStaple
+      summary: Activate or deactivate a pantry staple
+      parameters:
+        - name: stapleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PantryStaplePatchRequest"
+      responses:
+        "200":
+          description: Pantry staple.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - pantryStaple
+                properties:
+                  pantryStaple:
+                    $ref: "#/components/schemas/PantryStaple"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/import/meal-plan:
+    post:
+      tags:
+        - Meal Plan Import
+      operationId: importMealPlan
+      summary: Import a weekly meal plan
+      description: >
+        Imports an outside-LLM meal plan, upserts the target week, creates or
+        replaces dinners for the mapped dates, stores the grocery list, and
+        preserves the raw import. This action models the safer envelope request
+        shape, though the route also accepts a raw imported meal plan with
+        weekStart supplied as a query parameter.
+      parameters:
+        - name: weekStart
+          in: query
+          required: false
+          description: Optional fallback week start if the request body omits weekStart.
+          schema:
+            $ref: "#/components/schemas/DateOnly"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanImportEnvelope"
+      responses:
+        "201":
+          description: Import result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanImportResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/weeks:
+    get:
+      tags:
+        - Weeks
+      operationId: listWeeks
+      summary: List family weeks
+      responses:
+        "200":
+          description: Weeks newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - weeks
+                properties:
+                  weeks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Week"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Weeks
+      operationId: createWeek
+      summary: Create or update a week by start date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWeekRequest"
+      responses:
+        "201":
+          description: Created or updated week.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - week
+                properties:
+                  week:
+                    $ref: "#/components/schemas/Week"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/weeks/{weekId}:
+    get:
+      tags:
+        - Weeks
+      operationId: getWeek
+      summary: Get a family week
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+      responses:
+        "200":
+          description: Week details.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - week
+                properties:
+                  week:
+                    $ref: "#/components/schemas/Week"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/weeks/{weekId}/days/{date}/meals:
+    post:
+      tags:
+        - Weeks
+      operationId: upsertDinnerForDate
+      summary: Create or replace a dinner for a date
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+        - name: date
+          in: path
+          required: true
+          description: Dinner date.
+          schema:
+            $ref: "#/components/schemas/DateOnly"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealUpsertRequest"
+      responses:
+        "201":
+          description: Created or replaced meal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - meal
+                properties:
+                  meal:
+                    $ref: "#/components/schemas/Meal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/weeks/{weekId}/days/{date}/meals/from-saved-recipe:
+    post:
+      tags:
+        - Weeks
+      operationId: replaceDinnerFromSavedRecipe
+      summary: Replace a dinner from a saved recipe
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+        - name: date
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/DateOnly"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedRecipeSwapRequest"
+      responses:
+        "200":
+          description: Replacement result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  mealId:
+                    type: string
+                  weekId:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/weeks/{weekId}/grocery-list:
+    post:
+      tags:
+        - Weeks
+      operationId: upsertGroceryList
+      summary: Create or replace a grocery list for a week
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroceryListUpsertRequest"
+      responses:
+        "201":
+          description: Created or replaced grocery list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - groceryList
+                properties:
+                  groceryList:
+                    $ref: "#/components/schemas/GroceryList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/weeks/{weekId}/grocery-list/refresh:
+    post:
+      tags:
+        - Weeks
+      operationId: refreshGroceryList
+      summary: Refresh the stored grocery list from current dinners
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+      responses:
+        "200":
+          description: Refresh result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groceryList:
+                    $ref: "#/components/schemas/GroceryList"
+                  itemCount:
+                    type: integer
+                  message:
+                    type: string
+                  weekId:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/weeks/{weekId}/grocery-reconciliation:
+    get:
+      tags:
+        - Weeks
+      operationId: getGroceryReconciliation
+      summary: Compare derived grocery items with the stored grocery list
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+      responses:
+        "200":
+          description: Grocery reconciliation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroceryReconciliationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/weeks/{weekId}/shopping-items:
+    post:
+      tags:
+        - Weeks
+      operationId: updateShoppingItemStatus
+      summary: Update one shopping item status
+      description: API-key calls are attributed to the user who created the key.
+      parameters:
+        - $ref: "#/components/parameters/WeekId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShoppingItemStatusUpdateRequest"
+      responses:
+        "200":
+          description: Shopping item status updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  shoppingItemState:
+                    $ref: "#/components/schemas/ShoppingItemState"
+                  weekId:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/meals/{mealId}:
+    patch:
+      tags:
+        - Meals
+      operationId: updateMeal
+      summary: Patch a meal
+      parameters:
+        - $ref: "#/components/parameters/MealId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPatchRequest"
+      responses:
+        "200":
+          description: Updated meal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - meal
+                properties:
+                  meal:
+                    $ref: "#/components/schemas/Meal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/meals/{mealId}/feedback:
+    post:
+      tags:
+        - Meals
+      operationId: recordMealFeedback
+      summary: Record meal feedback
+      parameters:
+        - $ref: "#/components/parameters/MealId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealFeedbackRequest"
+      responses:
+        "200":
+          description: Updated meal feedback, optionally with a rejected-meal pattern.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - meal
+                  - rejectedMeal
+                properties:
+                  meal:
+                    $ref: "#/components/schemas/Meal"
+                  rejectedMeal:
+                    allOf:
+                      - $ref: "#/components/schemas/RejectedMeal"
+                    nullable: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/meals/{mealId}/outcome:
+    post:
+      tags:
+        - Meals
+      operationId: saveMealOutcome
+      summary: Save meal closeout outcome
+      parameters:
+        - $ref: "#/components/parameters/MealId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealOutcomeRequest"
+      responses:
+        "200":
+          description: Outcome result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meal:
+                    $ref: "#/components/schemas/Meal"
+                  rejectedMeal:
+                    allOf:
+                      - $ref: "#/components/schemas/RejectedMeal"
+                    nullable: true
+                  weekId:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/meals/{mealId}/vote:
+    post:
+      tags:
+        - Meals
+      operationId: upsertMealVote
+      summary: Upsert the caller actor's vote for a meal
+      parameters:
+        - $ref: "#/components/parameters/MealId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealVoteRequest"
+      responses:
+        "200":
+          description: Meal vote.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mealVote:
+                    $ref: "#/components/schemas/MealVote"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/rejected-meals:
+    get:
+      tags:
+        - Rejected Meals
+      operationId: listRejectedMeals
+      summary: List rejected meals and avoid patterns
+      responses:
+        "200":
+          description: Rejected meals newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - rejectedMeals
+                properties:
+                  rejectedMeals:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RejectedMeal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Rejected Meals
+      operationId: createRejectedMeal
+      summary: Create a rejected-meal avoid pattern
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectedMealCreateRequest"
+      responses:
+        "201":
+          description: Created rejected meal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - rejectedMeal
+                properties:
+                  rejectedMeal:
+                    $ref: "#/components/schemas/RejectedMeal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/rejected-meals/{id}:
+    patch:
+      tags:
+        - Rejected Meals
+      operationId: updateRejectedMeal
+      summary: Patch a rejected-meal avoid pattern
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Rejected meal id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectedMealPatchRequest"
+      responses:
+        "200":
+          description: Updated rejected meal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - rejectedMeal
+                properties:
+                  rejectedMeal:
+                    $ref: "#/components/schemas/RejectedMeal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: Kitchen Almanac family API key
+      description: Use a key created in /api-keys, for example mp_prefix_secret.
+  parameters:
+    MealId:
+      name: mealId
+      in: path
+      required: true
+      description: Meal id.
+      schema:
+        type: string
+    WeekId:
+      name: weekId
+      in: path
+      required: true
+      description: Week id.
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/ErrorResponse"
+              - $ref: "#/components/schemas/ValidationErrorResponse"
+    Unauthorized:
+      description: Missing or invalid authentication.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Authentication required.
+    Forbidden:
+      description: Authenticated caller does not have access.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    DateOnly:
+      type: string
+      format: date
+      pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+      example: "2026-04-27"
+    DateTime:
+      type: string
+      format: date-time
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+    ValidationErrorResponse:
+      type: object
+      required:
+        - error
+        - details
+      properties:
+        error:
+          type: string
+          example: Invalid request body.
+        details:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    FamilyRole:
+      type: string
+      enum:
+        - OWNER
+        - ADMIN
+        - MEMBER
+    HouseholdDocumentKind:
+      type: string
+      enum:
+        - HOUSEHOLD_PROFILE
+        - MEDICAL_GUIDELINES
+        - BATCH_PREP_PATTERNS
+    MealFeedbackStatus:
+      type: string
+      enum:
+        - PLANNED
+        - LIKED
+        - WORKED_WITH_TWEAKS
+        - REJECTED
+    MealOutcomeStatus:
+      type: string
+      enum:
+        - PLANNED
+        - COOKED
+        - SKIPPED
+        - REPLACED
+        - LEFTOVERS
+    MealVoteValue:
+      type: string
+      enum:
+        - WANT
+        - OKAY
+        - "NO"
+    ShoppingItemStatus:
+      type: string
+      enum:
+        - NEEDED
+        - BOUGHT
+        - ALREADY_HAVE
+    Ingredient:
+      type: object
+      required:
+        - item
+      additionalProperties: true
+      properties:
+        item:
+          type: string
+          minLength: 1
+        quantity:
+          type: string
+    ValidationFlags:
+      type: object
+      properties:
+        diabetesFriendly:
+          type: boolean
+          default: false
+        heartHealthy:
+          type: boolean
+          default: false
+        noFishSafe:
+          type: boolean
+          default: false
+        kidFriendly:
+          type: boolean
+          default: false
+        budgetFit:
+          type: boolean
+          default: false
+        weeknightTimeSafe:
+          type: boolean
+          default: false
+        validationNotes:
+          type: string
+    HouseholdDocumentUpsertRequest:
+      type: object
+      required:
+        - content
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+    MealUpsertRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+        cuisine:
+          type: string
+        prepTimeActiveMinutes:
+          type: integer
+          minimum: 0
+        prepTimeTotalMinutes:
+          type: integer
+          minimum: 0
+        costEstimateCents:
+          type: integer
+          minimum: 0
+        servings:
+          type: integer
+          minimum: 1
+          default: 7
+        ingredients:
+          type: array
+          default: []
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        methodSteps:
+          type: array
+          default: []
+          items:
+            type: string
+            minLength: 1
+        kidAdaptations:
+          type: string
+        batchPrepNote:
+          type: string
+        validation:
+          $ref: "#/components/schemas/ValidationFlags"
+    MealPatchRequest:
+      type: object
+      description: Supply only the fields to change.
+      properties:
+        name:
+          type: string
+          minLength: 1
+        cuisine:
+          type: string
+        prepTimeActiveMinutes:
+          type: integer
+          minimum: 0
+        prepTimeTotalMinutes:
+          type: integer
+          minimum: 0
+        costEstimateCents:
+          type: integer
+          minimum: 0
+        servings:
+          type: integer
+          minimum: 1
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        methodSteps:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        kidAdaptations:
+          type: string
+        batchPrepNote:
+          type: string
+        validation:
+          $ref: "#/components/schemas/ValidationFlags"
+    MealFeedbackRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/MealFeedbackStatus"
+        reason:
+          type: string
+        tweaks:
+          type: string
+        createRejectedPattern:
+          type: boolean
+          default: false
+        patternToAvoid:
+          type: string
+          description: Pattern to avoid when createRejectedPattern is true.
+    MealOutcomeRequest:
+      type: object
+      required:
+        - feedbackStatus
+        - outcomeStatus
+      properties:
+        actualCostCents:
+          type: integer
+          minimum: 0
+          nullable: true
+        feedbackStatus:
+          $ref: "#/components/schemas/MealFeedbackStatus"
+        feedbackReason:
+          type: string
+        feedbackTweaks:
+          type: string
+        outcomeStatus:
+          $ref: "#/components/schemas/MealOutcomeStatus"
+        outcomeNotes:
+          type: string
+        leftoverNotes:
+          type: string
+        createRejectedPattern:
+          type: boolean
+          default: false
+        patternToAvoid:
+          type: string
+    MealVoteRequest:
+      type: object
+      required:
+        - vote
+      properties:
+        vote:
+          $ref: "#/components/schemas/MealVoteValue"
+        comment:
+          type: string
+    CreateWeekRequest:
+      type: object
+      required:
+        - weekStart
+      properties:
+        weekStart:
+          $ref: "#/components/schemas/DateOnly"
+        title:
+          type: string
+        notes:
+          type: string
+        budgetTargetCents:
+          type: integer
+          minimum: 0
+    RejectedMealCreateRequest:
+      type: object
+      required:
+        - mealName
+        - patternToAvoid
+        - reason
+      properties:
+        mealName:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        patternToAvoid:
+          type: string
+          minLength: 1
+        active:
+          type: boolean
+          default: true
+    RejectedMealPatchRequest:
+      type: object
+      properties:
+        mealName:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        patternToAvoid:
+          type: string
+          minLength: 1
+        active:
+          type: boolean
+    GroceryListUpsertRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+        sections:
+          type: array
+          default: []
+          items:
+            $ref: "#/components/schemas/GrocerySectionInput"
+    ShoppingItemStatusUpdateRequest:
+      type: object
+      required:
+        - itemName
+        - status
+      properties:
+        itemName:
+          type: string
+          minLength: 1
+        canonicalName:
+          type: string
+        quantity:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ShoppingItemStatus"
+    GrocerySectionInput:
+      type: object
+      required:
+        - name
+        - items
+      properties:
+        name:
+          type: string
+          minLength: 1
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+    MealPlanImportEnvelope:
+      type: object
+      required:
+        - plan
+      properties:
+        weekStart:
+          $ref: "#/components/schemas/DateOnly"
+        week_start:
+          $ref: "#/components/schemas/DateOnly"
+        plan:
+          $ref: "#/components/schemas/ImportedMealPlan"
+    ImportedMealPlan:
+      type: object
+      required:
+        - recipes
+      additionalProperties: true
+      properties:
+        schema_version:
+          type: string
+          example: "1.0"
+        input_summary:
+          type: object
+          additionalProperties: true
+          properties:
+            assumptions:
+              type: array
+              items:
+                type: string
+            budget_target_usd:
+              type: number
+            constraints:
+              type: array
+              items:
+                type: string
+            family_size:
+              type: integer
+              minimum: 1
+        weekly_overview:
+          type: object
+          additionalProperties: true
+          properties:
+            theme:
+              type: string
+            budget_status:
+              type: string
+            estimated_total_grocery_cost_usd:
+              type: number
+            coordination_strategy:
+              type: array
+              items:
+                type: string
+            leftover_plan:
+              type: array
+              items:
+                type: string
+            pantry_staples_assumed:
+              type: array
+              items:
+                type: string
+            prep_ahead:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+                properties:
+                  item:
+                    type: string
+                  when:
+                    type: string
+                  minutes:
+                    type: number
+                  instructions:
+                    type: string
+        shopping_list:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/ImportedShoppingItem"
+        recipes:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ImportedRecipe"
+    ImportedShoppingItem:
+      type: object
+      required:
+        - item
+      additionalProperties: true
+      properties:
+        item:
+          type: string
+          minLength: 1
+        total_amount:
+          oneOf:
+            - type: number
+            - type: string
+        unit:
+          type: string
+        pantry_item:
+          type: boolean
+        estimated_cost_usd:
+          type: number
+        used_in_recipes:
+          type: array
+          items:
+            type: string
+    ImportedRecipe:
+      type: object
+      required:
+        - dinner_title
+      additionalProperties: true
+      properties:
+        day:
+          type: string
+          description: Day name such as Monday. If omitted, recipe order is used.
+        dinner_title:
+          type: string
+          minLength: 1
+        estimated_cost_usd:
+          type: number
+        servings:
+          type: integer
+          minimum: 1
+        difficulty:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        equipment:
+          type: array
+          items:
+            type: string
+        time:
+          type: object
+          additionalProperties: true
+          properties:
+            prep_minutes:
+              type: number
+            cook_minutes:
+              type: number
+            total_minutes:
+              type: number
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportedRecipeIngredient"
+        instructions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportedRecipeInstruction"
+        health_adjustment:
+          type: object
+          additionalProperties: true
+          properties:
+            for_person:
+              type: string
+            plate_build:
+              type: string
+            changes:
+              type: array
+              items:
+                type: string
+            why_it_helps:
+              type: array
+              items:
+                type: string
+        kid_friendly_variation:
+          type: object
+          additionalProperties: true
+          properties:
+            strategy:
+              type: string
+            notes:
+              type: array
+              items:
+                type: string
+            serve_components_separately:
+              type: boolean
+        leftovers:
+          type: object
+          additionalProperties: true
+          properties:
+            expected:
+              type: boolean
+            storage:
+              type: string
+            reuse_ideas:
+              type: array
+              items:
+                type: string
+        nutrition_estimate_per_serving:
+          type: object
+          additionalProperties: true
+        why_this_works:
+          type: string
+    ImportedRecipeIngredient:
+      type: object
+      required:
+        - name
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+          minLength: 1
+        amount:
+          oneOf:
+            - type: number
+            - type: string
+        unit:
+          type: string
+        preparation:
+          type: string
+        optional:
+          type: boolean
+        pantry_item:
+          type: boolean
+        substitutes:
+          type: array
+          items:
+            type: string
+    ImportedRecipeInstruction:
+      type: object
+      required:
+        - text
+      additionalProperties: true
+      properties:
+        step:
+          type: number
+        text:
+          type: string
+          minLength: 1
+        time_minutes:
+          type: number
+        heat:
+          type: string
+    MealPlanImportResult:
+      type: object
+      required:
+        - importedRecipeCount
+        - week
+      properties:
+        importedRecipeCount:
+          type: integer
+          minimum: 0
+        week:
+          $ref: "#/components/schemas/Week"
+    Family:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    HouseholdDocument:
+      type: object
+      required:
+        - id
+        - familyId
+        - kind
+        - title
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        kind:
+          $ref: "#/components/schemas/HouseholdDocumentKind"
+        title:
+          type: string
+        content:
+          type: string
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+    FamilyMember:
+      type: object
+      required:
+        - id
+        - familyId
+        - userId
+        - role
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        userId:
+          type: string
+        role:
+          $ref: "#/components/schemas/FamilyRole"
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+    UserSummary:
+      type: object
+      required:
+        - email
+        - name
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+    PantryStaple:
+      type: object
+      required:
+        - id
+        - canonicalName
+        - displayName
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        canonicalName:
+          type: string
+        displayName:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+    PantryStapleCreateRequest:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+    PantryStaplePatchRequest:
+      type: object
+      required:
+        - active
+      properties:
+        active:
+          type: boolean
+    SavedRecipeSummary:
+      type: object
+      required:
+        - id
+        - name
+        - cuisine
+        - costEstimateCents
+        - prepTimeTotalMinutes
+        - servings
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cuisine:
+          type: string
+          nullable: true
+        costEstimateCents:
+          type: integer
+          nullable: true
+        prepTimeTotalMinutes:
+          type: integer
+          nullable: true
+        servings:
+          type: integer
+    SavedRecipe:
+      type: object
+      required:
+        - id
+        - familyId
+        - name
+        - active
+        - ingredients
+        - methodSteps
+        - servings
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        name:
+          type: string
+        cuisine:
+          type: string
+          nullable: true
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        methodSteps:
+          type: array
+          items:
+            type: string
+        servings:
+          type: integer
+        costEstimateCents:
+          type: integer
+          nullable: true
+        prepTimeActiveMinutes:
+          type: integer
+          nullable: true
+        prepTimeTotalMinutes:
+          type: integer
+          nullable: true
+        kidAdaptations:
+          type: string
+          nullable: true
+        batchPrepNote:
+          type: string
+          nullable: true
+        diabetesFriendly:
+          type: boolean
+        heartHealthy:
+          type: boolean
+        noFishSafe:
+          type: boolean
+        kidFriendly:
+          type: boolean
+        budgetFit:
+          type: boolean
+        weeknightTimeSafe:
+          type: boolean
+        validationNotes:
+          type: string
+          nullable: true
+        sourceRecipe:
+          type: object
+          nullable: true
+          additionalProperties: true
+        feedbackStatus:
+          allOf:
+            - $ref: "#/components/schemas/MealFeedbackStatus"
+          nullable: true
+        outcomeStatus:
+          allOf:
+            - $ref: "#/components/schemas/MealOutcomeStatus"
+          nullable: true
+        actualCostCents:
+          type: integer
+          nullable: true
+        active:
+          type: boolean
+        archivedAt:
+          $ref: "#/components/schemas/DateTime"
+          nullable: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+    SavedRecipeWriteRequest:
+      allOf:
+        - $ref: "#/components/schemas/MealUpsertRequest"
+        - type: object
+          properties:
+            active:
+              type: boolean
+              default: true
+            actualCostCents:
+              type: integer
+              minimum: 0
+              nullable: true
+            feedbackStatus:
+              allOf:
+                - $ref: "#/components/schemas/MealFeedbackStatus"
+              nullable: true
+            outcomeStatus:
+              allOf:
+                - $ref: "#/components/schemas/MealOutcomeStatus"
+              nullable: true
+            outcomeNotes:
+              type: string
+              nullable: true
+            leftoverNotes:
+              type: string
+              nullable: true
+            sourceRecipe:
+              type: object
+              nullable: true
+              additionalProperties: true
+    SavedRecipePatchRequest:
+      type: object
+      description: Supply only fields to change. Set active false to archive or true to restore.
+      properties:
+        active:
+          type: boolean
+        name:
+          type: string
+        cuisine:
+          type: string
+          nullable: true
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        methodSteps:
+          type: array
+          items:
+            type: string
+        servings:
+          type: integer
+          minimum: 1
+        costEstimateCents:
+          type: integer
+          minimum: 0
+          nullable: true
+        actualCostCents:
+          type: integer
+          minimum: 0
+          nullable: true
+        validation:
+          $ref: "#/components/schemas/ValidationFlags"
+    SavedRecipeFromMealRequest:
+      type: object
+      required:
+        - mealId
+      properties:
+        mealId:
+          type: string
+    SavedRecipeSwapRequest:
+      type: object
+      required:
+        - recipeId
+      properties:
+        recipeId:
+          type: string
+    MealVoteWithMeal:
+      type: object
+      required:
+        - id
+        - mealId
+        - userId
+        - vote
+        - comment
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        mealId:
+          type: string
+        userId:
+          type: string
+        weekId:
+          type: string
+        vote:
+          $ref: "#/components/schemas/MealVoteValue"
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+        meal:
+          type: object
+          properties:
+            name:
+              type: string
+        user:
+          $ref: "#/components/schemas/UserSummary"
+    HouseholdProfileResponse:
+      type: object
+      required:
+        - documents
+        - family
+        - familyMembers
+        - medicalDisclaimer
+        - pantryStaples
+        - recentMealVotes
+        - rejectedMeals
+        - savedRecipes
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/HouseholdDocument"
+        family:
+          $ref: "#/components/schemas/Family"
+        familyMembers:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyMember"
+        medicalDisclaimer:
+          type: string
+        pantryStaples:
+          type: array
+          items:
+            $ref: "#/components/schemas/PantryStaple"
+        recentMealVotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MealVoteWithMeal"
+        rejectedMeals:
+          type: array
+          items:
+            $ref: "#/components/schemas/RejectedMeal"
+        savedRecipes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedRecipeSummary"
+    PlanningBriefResponse:
+      type: object
+      required:
+        - briefMarkdown
+        - context
+        - family
+        - generatedAt
+        - weekEnd
+        - weekStart
+      properties:
+        briefMarkdown:
+          type: string
+        context:
+          $ref: "#/components/schemas/PlanningBriefContext"
+        family:
+          $ref: "#/components/schemas/Family"
+        generatedAt:
+          $ref: "#/components/schemas/DateTime"
+        weekStart:
+          $ref: "#/components/schemas/DateOnly"
+        weekEnd:
+          $ref: "#/components/schemas/DateOnly"
+    PlanningBriefContext:
+      type: object
+      required:
+        - activeRejectedMeals
+        - familyMembers
+        - householdDocuments
+        - pantryStaples
+        - savedRecipes
+        - recentGrocerySummaries
+        - recentIngredientSignals
+        - recentMeals
+        - recentVotes
+      properties:
+        activeRejectedMeals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefRejectedMeal"
+        familyMembers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefFamilyMember"
+        householdDocuments:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefHouseholdDocument"
+        pantryStaples:
+          type: array
+          items:
+            $ref: "#/components/schemas/PantryStaple"
+        savedRecipes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefSavedRecipe"
+        recentGrocerySummaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefGrocerySummary"
+        recentIngredientSignals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefIngredientSignal"
+        recentMeals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefRecentMeal"
+        recentVotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanningBriefRecentVote"
+    PlanningBriefRejectedMeal:
+      type: object
+      required:
+        - mealName
+        - patternToAvoid
+        - reason
+        - rejectedAt
+      properties:
+        mealName:
+          type: string
+        patternToAvoid:
+          type: string
+        reason:
+          type: string
+        rejectedAt:
+          $ref: "#/components/schemas/DateTime"
+    PlanningBriefFamilyMember:
+      type: object
+      required:
+        - email
+        - name
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/FamilyRole"
+    PlanningBriefHouseholdDocument:
+      type: object
+      required:
+        - content
+        - kind
+        - title
+      properties:
+        content:
+          type: string
+        kind:
+          $ref: "#/components/schemas/HouseholdDocumentKind"
+        title:
+          type: string
+    PlanningBriefSavedRecipe:
+      type: object
+      required:
+        - costEstimateCents
+        - cuisine
+        - flags
+        - id
+        - name
+        - prepTimeTotalMinutes
+        - servings
+        - source
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cuisine:
+          type: string
+          nullable: true
+        servings:
+          type: integer
+        prepTimeTotalMinutes:
+          type: integer
+          nullable: true
+        costEstimateCents:
+          type: integer
+          nullable: true
+        flags:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+    PlanningBriefGrocerySummary:
+      type: object
+      required:
+        - notes
+        - sections
+        - weekStart
+      properties:
+        notes:
+          type: string
+          nullable: true
+        weekStart:
+          $ref: "#/components/schemas/DateOnly"
+        sections:
+          type: array
+          items:
+            type: object
+            required:
+              - itemCount
+              - items
+              - name
+            properties:
+              name:
+                type: string
+              itemCount:
+                type: integer
+              items:
+                type: array
+                items:
+                  type: string
+    PlanningBriefIngredientSignal:
+      type: object
+      required:
+        - displayTotal
+        - mealNames
+        - name
+        - pantryItem
+      properties:
+        name:
+          type: string
+        displayTotal:
+          type: string
+        mealNames:
+          type: array
+          items:
+            type: string
+        pantryItem:
+          type: boolean
+    PlanningBriefRecentMeal:
+      type: object
+      required:
+        - actualCostCents
+        - costEstimateCents
+        - cuisine
+        - date
+        - feedbackReason
+        - feedbackStatus
+        - feedbackTweaks
+        - flags
+        - leftoverNotes
+        - name
+        - outcomeNotes
+        - outcomeStatus
+        - weekStart
+      properties:
+        name:
+          type: string
+        date:
+          $ref: "#/components/schemas/DateOnly"
+        weekStart:
+          $ref: "#/components/schemas/DateOnly"
+        cuisine:
+          type: string
+          nullable: true
+        costEstimateCents:
+          type: integer
+          nullable: true
+        actualCostCents:
+          type: integer
+          nullable: true
+        feedbackStatus:
+          $ref: "#/components/schemas/MealFeedbackStatus"
+        feedbackReason:
+          type: string
+          nullable: true
+        feedbackTweaks:
+          type: string
+          nullable: true
+        outcomeStatus:
+          $ref: "#/components/schemas/MealOutcomeStatus"
+        outcomeNotes:
+          type: string
+          nullable: true
+        leftoverNotes:
+          type: string
+          nullable: true
+        flags:
+          type: array
+          items:
+            type: string
+    PlanningBriefRecentVote:
+      type: object
+      required:
+        - comment
+        - mealDate
+        - mealName
+        - updatedAt
+        - vote
+        - voterEmail
+        - voterName
+        - weekStart
+      properties:
+        mealName:
+          type: string
+        mealDate:
+          $ref: "#/components/schemas/DateOnly"
+        weekStart:
+          $ref: "#/components/schemas/DateOnly"
+        vote:
+          $ref: "#/components/schemas/MealVoteValue"
+        comment:
+          type: string
+          nullable: true
+        voterEmail:
+          type: string
+          format: email
+        voterName:
+          type: string
+          nullable: true
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+    Week:
+      type: object
+      required:
+        - id
+        - familyId
+        - weekStart
+        - title
+        - notes
+        - budgetTargetCents
+        - sourceImport
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        weekStart:
+          $ref: "#/components/schemas/DateTime"
+        title:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        budgetTargetCents:
+          type: integer
+          nullable: true
+        sourceImport:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayPlan"
+        groceryList:
+          allOf:
+            - $ref: "#/components/schemas/GroceryList"
+          nullable: true
+    DayPlan:
+      type: object
+      required:
+        - id
+        - weekId
+        - date
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        weekId:
+          type: string
+        date:
+          $ref: "#/components/schemas/DateTime"
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+        dinner:
+          allOf:
+            - $ref: "#/components/schemas/Meal"
+          nullable: true
+    Meal:
+      type: object
+      required:
+        - id
+        - dayPlanId
+        - name
+        - ingredients
+        - methodSteps
+        - servings
+        - feedbackStatus
+        - outcomeStatus
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        dayPlanId:
+          type: string
+        name:
+          type: string
+        cuisine:
+          type: string
+          nullable: true
+        prepTimeActiveMinutes:
+          type: integer
+          nullable: true
+        prepTimeTotalMinutes:
+          type: integer
+          nullable: true
+        costEstimateCents:
+          type: integer
+          nullable: true
+        servings:
+          type: integer
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        methodSteps:
+          type: array
+          items:
+            type: string
+        kidAdaptations:
+          type: string
+          nullable: true
+        batchPrepNote:
+          type: string
+          nullable: true
+        diabetesFriendly:
+          type: boolean
+        heartHealthy:
+          type: boolean
+        noFishSafe:
+          type: boolean
+        kidFriendly:
+          type: boolean
+        budgetFit:
+          type: boolean
+        weeknightTimeSafe:
+          type: boolean
+        validationNotes:
+          type: string
+          nullable: true
+        sourceRecipe:
+          type: object
+          nullable: true
+          additionalProperties: true
+        feedbackStatus:
+          $ref: "#/components/schemas/MealFeedbackStatus"
+        feedbackReason:
+          type: string
+          nullable: true
+        feedbackTweaks:
+          type: string
+          nullable: true
+        outcomeStatus:
+          $ref: "#/components/schemas/MealOutcomeStatus"
+        outcomeNotes:
+          type: string
+          nullable: true
+        leftoverNotes:
+          type: string
+          nullable: true
+        actualCostCents:
+          type: integer
+          nullable: true
+        closedOutAt:
+          $ref: "#/components/schemas/DateTime"
+          nullable: true
+        closedOutByUserId:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+        votes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MealVote"
+    MealVote:
+      type: object
+      required:
+        - id
+        - mealId
+        - userId
+        - vote
+        - comment
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        mealId:
+          type: string
+        userId:
+          type: string
+        vote:
+          $ref: "#/components/schemas/MealVoteValue"
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+    GroceryList:
+      type: object
+      required:
+        - id
+        - weekId
+        - sections
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        weekId:
+          type: string
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrocerySection"
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+    GrocerySection:
+      type: object
+      required:
+        - name
+        - items
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+    ShoppingItemState:
+      type: object
+      required:
+        - canonicalName
+        - itemName
+        - status
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        weekId:
+          type: string
+        canonicalName:
+          type: string
+        itemName:
+          type: string
+        quantity:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ShoppingItemStatus"
+        updatedByUserId:
+          type: string
+          nullable: true
+        updatedBy:
+          $ref: "#/components/schemas/UserSummary"
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"
+    GroceryReconciliationResponse:
+      type: object
+      required:
+        - derivedSections
+        - reconciliation
+        - storedSections
+        - weekId
+      properties:
+        weekId:
+          type: string
+        derivedSections:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrocerySection"
+        storedSections:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrocerySection"
+        reconciliation:
+          type: object
+          required:
+            - added
+            - derivedItemCount
+            - hasChanges
+            - quantityChanged
+            - removed
+            - storedItemCount
+            - unchangedCount
+          properties:
+            hasChanges:
+              type: boolean
+            derivedItemCount:
+              type: integer
+            storedItemCount:
+              type: integer
+            unchangedCount:
+              type: integer
+            added:
+              type: array
+              items:
+                $ref: "#/components/schemas/GroceryReconciliationItem"
+            removed:
+              type: array
+              items:
+                $ref: "#/components/schemas/GroceryReconciliationItem"
+            quantityChanged:
+              type: array
+              items:
+                type: object
+                properties:
+                  canonicalName:
+                    type: string
+                  item:
+                    type: string
+                  previousItem:
+                    type: string
+                  nextQuantity:
+                    type: string
+                  previousQuantity:
+                    type: string
+    GroceryReconciliationItem:
+      type: object
+      properties:
+        canonicalName:
+          type: string
+        item:
+          type: string
+        quantity:
+          type: string
+    RejectedMeal:
+      type: object
+      required:
+        - id
+        - familyId
+        - mealName
+        - reason
+        - patternToAvoid
+        - active
+        - rejectedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        mealName:
+          type: string
+        reason:
+          type: string
+        patternToAvoid:
+          type: string
+        active:
+          type: boolean
+        sourceMealId:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+          nullable: true
+        rejectedAt:
+          $ref: "#/components/schemas/DateTime"
+        createdAt:
+          $ref: "#/components/schemas/DateTime"
+        updatedAt:
+          $ref: "#/components/schemas/DateTime"

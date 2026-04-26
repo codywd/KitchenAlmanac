@@ -23,6 +23,9 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock("@/lib/api-auth", () => ({
   authenticateRequest: vi.fn(async () => routeState.auth),
+  getAuthenticatedActorUserId: vi.fn(
+    (auth: typeof routeState.auth) => auth?.actorUserId ?? auth?.user?.id ?? null,
+  ),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -100,7 +103,7 @@ describe("POST /api/weeks/[weekId]/shopping-items", () => {
     routeState.revalidated = [];
   });
 
-  it("requires a signed-in family member session", async () => {
+  it("requires authentication", async () => {
     routeState.auth = null;
 
     const response = await POST(request({}), params);
@@ -108,8 +111,16 @@ describe("POST /api/weeks/[weekId]/shopping-items", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejects API-key callers because shopping sync is a member action", async () => {
-    routeState.auth = auth("ADMIN", "apiKey");
+  it("rejects API-key callers without creator attribution", async () => {
+    routeState.auth = {
+      authType: "apiKey",
+      family: {
+        id: "family_1",
+        name: "Test Family",
+      },
+      role: "ADMIN",
+      user: null,
+    };
 
     const response = await POST(
       request({
@@ -121,7 +132,35 @@ describe("POST /api/weeks/[weekId]/shopping-items", () => {
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toBe("Shopping updates require a signed-in family member.");
+    expect(body.error).toBe(
+      "Shopping updates require an API key created by a user or a signed-in family member.",
+    );
+  });
+
+  it("lets API-key callers sync status changes as the key creator", async () => {
+    routeState.auth = auth("ADMIN", "apiKey");
+
+    const response = await POST(
+      request({
+        itemName: "Yellow onions",
+        status: "BOUGHT",
+      }),
+      params,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.shoppingItemState.status).toBe("BOUGHT");
+    expect(routeState.db?.shoppingItemState.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          updatedByUserId: "user_admin",
+        }),
+        update: expect.objectContaining({
+          updatedByUserId: "user_admin",
+        }),
+      }),
+    );
   });
 
   it("lets members sync status changes for their family week", async () => {

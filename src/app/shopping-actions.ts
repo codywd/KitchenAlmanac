@@ -1,8 +1,10 @@
 "use server";
 
-import { getDb } from "@/lib/db";
 import { assertCanManagePlans, requireFamilyContext } from "@/lib/family";
-import { normalizeIngredientName } from "@/lib/ingredients";
+import {
+  setPantryStapleActiveForFamily,
+  upsertPantryStapleForFamily,
+} from "@/lib/pantry-staples";
 import {
   pantryStapleCreateSchema,
   pantryStapleDeactivateSchema,
@@ -78,28 +80,12 @@ export async function addPantryStapleAction(
   }
 
   const displayName = parsed.data.displayName;
-  const canonicalName = normalizeIngredientName(displayName);
 
   try {
-    await getDb().pantryStaple.upsert({
-      create: {
-        active: true,
-        canonicalName,
-        createdByUserId: context.user.id,
-        displayName,
-        familyId: context.family.id,
-      },
-      update: {
-        active: true,
-        createdByUserId: context.user.id,
-        displayName,
-      },
-      where: {
-        familyId_canonicalName: {
-          canonicalName,
-          familyId: context.family.id,
-        },
-      },
+    await upsertPantryStapleForFamily({
+      displayName,
+      familyId: context.family.id,
+      userId: context.user.id,
     });
 
     revalidateShoppingSurfaces();
@@ -120,15 +106,11 @@ export async function deactivatePantryStapleAction(formData: FormData) {
     stapleId: formData.get("stapleId"),
   });
 
-  await getDb().pantryStaple.updateMany({
-    data: {
-      active: false,
-      deactivatedByUserId: context.user.id,
-    },
-    where: {
-      familyId: context.family.id,
-      id: payload.stapleId,
-    },
+  await setPantryStapleActiveForFamily({
+    active: false,
+    familyId: context.family.id,
+    stapleId: payload.stapleId,
+    userId: context.user.id,
   });
 
   revalidateShoppingSurfaces();
