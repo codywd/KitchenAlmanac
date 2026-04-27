@@ -55,24 +55,33 @@ function visibleNavItems(role?: string) {
   return navItems.filter((item) => !item.adminOnly || canManage);
 }
 
-export function DesktopNav({ role }: { role?: string }) {
+export function DesktopNav({
+  collapsed = false,
+  role,
+}: {
+  collapsed?: boolean;
+  role?: string;
+}) {
   const pathname = usePathname();
 
   return (
-    <nav className="mt-10 space-y-1">
+    <nav aria-label="Desktop navigation" className="mt-10 space-y-1">
       {visibleNavItems(role).map((item) => {
         const Icon = item.icon;
         const active = isActivePath(pathname, item.href);
 
         return (
           <Link
+            aria-label={collapsed ? item.label : undefined}
             className="nav-link flex min-h-11 items-center gap-3 px-3 text-sm font-extrabold transition"
             data-active={active}
+            data-collapsed={collapsed}
             href={item.href}
             key={item.href}
+            title={collapsed ? item.label : undefined}
           >
-            <Icon size={17} />
-            {item.label}
+            <Icon className="shrink-0" size={17} />
+            <span className="sidebar-expanded">{item.label}</span>
           </Link>
         );
       })}

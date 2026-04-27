@@ -110,6 +110,10 @@ body::before {
   padding: clamp(1.25rem, 3vw, 2.5rem);
 }
 
+.ka-shell-content {
+  min-width: 0;
+}
+
 .ka-page {
   animation: ink-reveal 540ms ease both;
 }
@@ -424,11 +428,45 @@ body::before {
     linear-gradient(180deg, rgba(255, 253, 245, 0.94), rgba(244, 223, 189, 0.88)),
     var(--paper);
   border-right: 1px solid var(--line);
+  transition:
+    padding 180ms ease,
+    width 180ms ease;
+  width: 18rem;
+}
+
+.nav-rail[data-collapsed="true"] {
+  padding-inline: 1rem;
+  width: 5rem;
+}
+
+.nav-rail[data-collapsed="true"] .sidebar-expanded {
+  display: none;
+}
+
+.nav-rail[data-collapsed="true"] .sidebar-toggle {
+  margin-inline: auto;
+}
+
+.desktop-user-menu {
+  transition:
+    left 180ms ease,
+    right 180ms ease;
+}
+
+.nav-rail[data-collapsed="true"] .desktop-user-menu {
+  left: 1rem;
+  right: 1rem;
+  text-align: center;
 }
 
 .nav-link {
   color: var(--muted-ink);
   position: relative;
+}
+
+.nav-link[data-collapsed="true"] {
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .nav-link::before {
@@ -454,6 +492,17 @@ body::before {
 .nav-link[data-active="true"]::before {
   opacity: 1;
   transform: scaleY(1);
+}
+
+@media (min-width: 1024px) {
+  .ka-shell-content {
+    padding-left: 18rem;
+    transition: padding-left 180ms ease;
+  }
+
+  .ka-shell-content[data-sidebar-collapsed="true"] {
+    padding-left: 5rem;
+  }
 }
 
 .mobile-topbar {
