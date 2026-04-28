@@ -59,7 +59,7 @@ export function AppChrome({
         className="nav-rail fixed inset-y-0 left-0 hidden px-6 py-7 lg:block"
         data-collapsed={collapsed}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="sidebar-header flex items-start justify-between gap-3">
           <Link
             aria-label="KitchenAlmanac calendar"
             className="group block min-w-0"
