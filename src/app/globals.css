@@ -443,6 +443,12 @@ body::before {
   display: none;
 }
 
+.nav-rail[data-collapsed="true"] .sidebar-header {
+  align-items: center;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .nav-rail[data-collapsed="true"] .sidebar-toggle {
   margin-inline: auto;
 }
