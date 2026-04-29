@@ -87,22 +87,26 @@ export function AppChrome({
         </div>
         <DesktopNav collapsed={collapsed} role={role} />
         <div className="desktop-user-menu absolute inset-x-6 bottom-6 border-t border-[var(--line)] pt-5">
-          <div
-            className="text-sm font-extrabold text-[var(--ink)]"
-            title={user.name ?? user.email}
+          <Link
+            aria-label="Account"
+            className="desktop-account-link block min-w-0"
+            href="/account"
+            title={collapsed ? `${user.name ?? user.email} account` : undefined}
           >
-            {collapsed
-              ? (user.name ?? user.email).slice(0, 1).toUpperCase()
-              : user.name ?? user.email}
-          </div>
-          <div className="sidebar-expanded mt-1 truncate text-xs font-semibold text-[var(--muted-ink)]">
-            {user.email}
-          </div>
-          {family ? (
-            <div className="sidebar-expanded mt-2 text-xs font-black uppercase tracking-[0.12em] text-[var(--herb-dark)]">
-              {family.name} / {role?.toLowerCase()}
+            <div className="text-sm font-extrabold text-[var(--ink)]">
+              {collapsed
+                ? (user.name ?? user.email).slice(0, 1).toUpperCase()
+                : user.name ?? user.email}
             </div>
-          ) : null}
+            <div className="sidebar-expanded mt-1 truncate text-xs font-semibold text-[var(--muted-ink)]">
+              {user.email}
+            </div>
+            {family ? (
+              <div className="sidebar-expanded mt-2 text-xs font-black uppercase tracking-[0.12em] text-[var(--herb-dark)]">
+                {family.name} / {role?.toLowerCase()}
+              </div>
+            ) : null}
+          </Link>
           <form action={logoutAction} className="mt-3">
             <button
               className="ka-button-secondary flex w-full gap-2"

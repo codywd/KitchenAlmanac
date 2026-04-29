@@ -17,6 +17,7 @@ import {
 } from "@/lib/family";
 import { buildRejectedMealFromFeedback, normalizeFeedbackStatus } from "@/lib/feedback";
 import { buildImportReview, toImportReviewContext } from "@/lib/import-review";
+import { MAX_MEAL_SERVINGS } from "@/lib/meal-servings";
 import {
   getLatestFamilyBudgetTargetCents,
   loadPlanningBriefContext,
@@ -45,6 +46,30 @@ export type ReplaceDinnerActionState = {
   message?: string;
   weekId?: string;
 };
+
+export type MealServingsActionState = {
+  error?: string;
+  mealId?: string;
+  message?: string;
+};
+
+function formText(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function parseServings(value: string) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error("Servings must be a positive whole number.");
+  }
+
+  if (parsed > MAX_MEAL_SERVINGS) {
+    throw new Error(`Servings must be between 1 and ${MAX_MEAL_SERVINGS}.`);
+  }
+
+  return parsed;
+}
 
 export async function createCurrentWeekAction() {
   const context = await requireFamilyContext();
@@ -193,6 +218,75 @@ export async function toggleRejectedMealAction(formData: FormData) {
 
   revalidatePath("/rejected-meals");
   revalidatePath("/meal-memory");
+}
+
+export async function updateMealServingsAction(
+  _previousState: MealServingsActionState,
+  formData: FormData,
+): Promise<MealServingsActionState> {
+  const context = await requireFamilyContext();
+  assertCanManagePlans(context.role);
+  const mealId = formText(formData, "mealId");
+  let servings: number;
+
+  try {
+    if (!mealId) {
+      throw new Error("Meal not found.");
+    }
+
+    servings = parseServings(formText(formData, "servings"));
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not update servings.",
+    };
+  }
+
+  const meal = await getDb().meal.findFirst({
+    select: {
+      dayPlan: {
+        select: {
+          weekId: true,
+        },
+      },
+      id: true,
+    },
+    where: {
+      dayPlan: {
+        week: {
+          familyId: context.family.id,
+        },
+      },
+      id: mealId,
+    },
+  });
+
+  if (!meal) {
+    return {
+      error: "Meal not found.",
+    };
+  }
+
+  await getDb().meal.update({
+    data: {
+      servings,
+    },
+    where: {
+      id: meal.id,
+    },
+  });
+
+  revalidatePath(`/cook/${meal.id}`);
+  revalidatePath("/calendar");
+  revalidatePath("/planner");
+  revalidatePath(`/weeks/${meal.dayPlan.weekId}`);
+  revalidatePath(`/weeks/${meal.dayPlan.weekId}/closeout`);
+  revalidatePath(`/weeks/${meal.dayPlan.weekId}/review`);
+
+  return {
+    mealId: meal.id,
+    message: `Updated servings to ${servings}.`,
+  };
 }
 
 function parseRecipeJson(value: string) {

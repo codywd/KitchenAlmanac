@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createRejectedMealAction, replaceDinnerFromRecipeAction } from "./meal-actions";
+import {
+  createRejectedMealAction,
+  replaceDinnerFromRecipeAction,
+  updateMealServingsAction,
+} from "./meal-actions";
 
 const actionState = vi.hoisted(() => ({
   context: {
@@ -73,6 +77,18 @@ function makeDb({
     rejectedMeal: {
       create: vi.fn(async () => ({
         id: "rejected_1",
+      })),
+    },
+    meal: {
+      findFirst: vi.fn(async () => ({
+        dayPlan: {
+          weekId: "week_1",
+        },
+        id: "meal_1",
+      })),
+      update: vi.fn(async () => ({
+        id: "meal_1",
+        servings: 4,
       })),
     },
     week: {
@@ -238,5 +254,108 @@ describe("createRejectedMealAction", () => {
     expect(actionState.revalidated).toEqual(
       expect.arrayContaining(["/rejected-meals", "/meal-memory"]),
     );
+  });
+});
+
+describe("updateMealServingsAction", () => {
+  beforeEach(() => {
+    actionState.context.role = "OWNER";
+    actionState.db = makeDb().db;
+    actionState.revalidated = [];
+  });
+
+  it("updates in-family meal servings and revalidates planning and cooking surfaces", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    const result = await updateMealServingsAction(
+      {},
+      formData({
+        mealId: "meal_1",
+        servings: "4",
+      }),
+    );
+
+    expect(result).toEqual({
+      mealId: "meal_1",
+      message: "Updated servings to 4.",
+    });
+    expect(db.meal.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          dayPlan: {
+            week: {
+              familyId: "family_1",
+            },
+          },
+          id: "meal_1",
+        },
+      }),
+    );
+    expect(db.meal.update).toHaveBeenCalledWith({
+      data: {
+        servings: 4,
+      },
+      where: {
+        id: "meal_1",
+      },
+    });
+    expect(actionState.revalidated).toEqual(
+      expect.arrayContaining([
+        "/cook/meal_1",
+        "/planner",
+        "/weeks/week_1",
+        "/weeks/week_1/closeout",
+        "/weeks/week_1/review",
+      ]),
+    );
+  });
+
+  it("rejects invalid serving counts before writing", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    const result = await updateMealServingsAction(
+      {},
+      formData({
+        mealId: "meal_1",
+        servings: "0",
+      }),
+    );
+
+    expect(result.error).toBe("Servings must be a positive whole number.");
+    expect(db.meal.findFirst).not.toHaveBeenCalled();
+    expect(db.meal.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects implausibly high serving counts before writing", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    const result = await updateMealServingsAction(
+      {},
+      formData({
+        mealId: "meal_1",
+        servings: "1000",
+      }),
+    );
+
+    expect(result.error).toBe("Servings must be between 1 and 99.");
+    expect(db.meal.findFirst).not.toHaveBeenCalled();
+    expect(db.meal.update).not.toHaveBeenCalled();
+  });
+
+  it("forbids members from updating servings", async () => {
+    actionState.context.role = "MEMBER";
+
+    await expect(
+      updateMealServingsAction(
+        {},
+        formData({
+          mealId: "meal_1",
+          servings: "4",
+        }),
+      ),
+    ).rejects.toThrow("Only family owners and admins can manage meal plans.");
   });
 });

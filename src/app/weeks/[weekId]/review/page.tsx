@@ -14,6 +14,7 @@ import type { MealVoteValue } from "@prisma/client";
 
 import { voteMealAction } from "@/app/vote-actions";
 import { AppShell } from "@/components/app-shell";
+import { MealServingsForm } from "@/components/meal-servings-form";
 import { MealSwapForm } from "@/components/meal-swap-form";
 import { PageIntro } from "@/components/page-intro";
 import { SavedRecipeSwapForm } from "@/components/saved-recipe-swap-form";
@@ -455,6 +456,13 @@ export default async function WeekReviewPage({
                             {day.servings ? `${day.servings} servings` : "servings TBD"} /{" "}
                             {formatMoney(day.costEstimateCents)}
                           </p>
+                          {canManage && meal ? (
+                            <MealServingsForm
+                              className="mt-3 max-w-sm"
+                              mealId={meal.id}
+                              servings={meal.servings}
+                            />
+                          ) : null}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {meal ? (
