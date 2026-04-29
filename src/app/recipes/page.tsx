@@ -2,9 +2,10 @@ import {
   Archive,
   ArchiveRestore,
   BookOpen,
-  CalendarDays,
   Clock,
   DollarSign,
+  Plus,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -16,8 +17,23 @@ import { Section } from "@/components/section";
 import { formatMoney, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import {
+  filterSavedRecipes,
+  savedRecipeFilterOptions,
+  type SavedRecipeActiveFilter,
+  type SavedRecipeFlagFilter,
+} from "@/lib/saved-recipe-filters";
 
 export const dynamic = "force-dynamic";
+
+const flagFilters: Array<{ label: string; value: SavedRecipeFlagFilter }> = [
+  { label: "Diabetes", value: "diabetesFriendly" },
+  { label: "Heart", value: "heartHealthy" },
+  { label: "No fish", value: "noFishSafe" },
+  { label: "Kid", value: "kidFriendly" },
+  { label: "Budget", value: "budgetFit" },
+  { label: "Weeknight", value: "weeknightTimeSafe" },
+];
 
 function flagList(recipe: {
   budgetFit: boolean;
@@ -37,8 +53,45 @@ function flagList(recipe: {
   ].filter(Boolean);
 }
 
-export default async function RecipesPage() {
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function arrayParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  return value ? [value] : [];
+}
+
+function activeParam(value: string | string[] | undefined): SavedRecipeActiveFilter {
+  const active = firstParam(value);
+
+  return active === "all" || active === "false" ? active : "true";
+}
+
+function flagParams(value: string | string[] | undefined) {
+  const allowed = new Set(flagFilters.map((flag) => flag.value));
+
+  return arrayParam(value).filter((flag): flag is SavedRecipeFlagFilter =>
+    allowed.has(flag as SavedRecipeFlagFilter),
+  );
+}
+
+export default async function RecipesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    active?: string | string[];
+    cuisine?: string | string[];
+    flag?: string | string[];
+    q?: string | string[];
+    tag?: string | string[];
+  }>;
+}) {
   const context = await requireFamilyContext("/recipes");
+  const params = await searchParams;
   const canManage = canManagePlans(context.role);
   const recipes = await getDb().savedRecipe.findMany({
     include: {
@@ -63,6 +116,16 @@ export default async function RecipesPage() {
   });
   const activeRecipes = recipes.filter((recipe) => recipe.active);
   const archivedRecipes = recipes.filter((recipe) => !recipe.active);
+  const selectedFlags = flagParams(params.flag);
+  const filters = {
+    active: activeParam(params.active),
+    cuisines: arrayParam(params.cuisine),
+    flags: selectedFlags,
+    query: firstParam(params.q) ?? "",
+    tags: arrayParam(params.tag),
+  };
+  const filteredRecipes = filterSavedRecipes(recipes, filters);
+  const filterOptions = savedRecipeFilterOptions(recipes);
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -75,9 +138,9 @@ export default async function RecipesPage() {
                 <BookOpen size={16} />
               </Link>
               {canManage ? (
-                <Link className="ka-button gap-2" href="/planner">
-                  Planner
-                  <CalendarDays size={16} />
+                <Link className="ka-button gap-2" href="/recipes/new">
+                  New recipe
+                  <Plus size={16} />
                 </Link>
               ) : null}
             </div>
@@ -124,10 +187,89 @@ export default async function RecipesPage() {
           </div>
         </div>
 
+        <Section title="Find Recipes">
+          <form action="/recipes" className="ka-panel grid gap-3 border border-[var(--line)]">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))_auto]">
+              <label className="block">
+                <span className="ka-label">Search</span>
+                <input
+                  className="ka-field mt-1"
+                  defaultValue={filters.query}
+                  name="q"
+                  placeholder="Name, ingredient, tag"
+                />
+              </label>
+              <label className="block">
+                <span className="ka-label">Status</span>
+                <select
+                  className="ka-select mt-1 w-full"
+                  defaultValue={filters.active}
+                  name="active"
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Archived</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="ka-label">Tag</span>
+                <select
+                  className="ka-select mt-1 w-full"
+                  defaultValue={filters.tags[0] ?? ""}
+                  name="tag"
+                >
+                  <option value="">Any tag</option>
+                  {filterOptions.tags.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="ka-label">Cuisine</span>
+                <select
+                  className="ka-select mt-1 w-full"
+                  defaultValue={filters.cuisines[0] ?? ""}
+                  name="cuisine"
+                >
+                  <option value="">Any cuisine</option>
+                  {filterOptions.cuisines.map((cuisine) => (
+                    <option key={cuisine} value={cuisine}>
+                      {cuisine}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="ka-button gap-2 self-end">
+                <Search size={16} />
+                Filter
+              </button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+              {flagFilters.map((flag) => (
+                <label
+                  className="flex min-h-10 items-center gap-2 border border-[var(--line)] bg-[rgba(255,253,245,0.42)] px-3 text-sm font-black text-[var(--ink)]"
+                  key={flag.value}
+                >
+                  <input
+                    className="size-4 accent-[var(--herb)]"
+                    defaultChecked={filters.flags.includes(flag.value)}
+                    name="flag"
+                    type="checkbox"
+                    value={flag.value}
+                  />
+                  {flag.label}
+                </label>
+              ))}
+            </div>
+          </form>
+        </Section>
+
         <Section title="Saved Recipes">
-          {recipes.length ? (
+          {filteredRecipes.length ? (
             <div className="grid gap-4">
-              {recipes.map((recipe) => {
+              {filteredRecipes.map((recipe) => {
                 const flags = flagList(recipe);
 
                 return (
@@ -174,6 +316,31 @@ export default async function RecipesPage() {
                             ))}
                           </div>
                         ) : null}
+                        {recipe.tags.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {recipe.tags.map((tag) => (
+                              <span
+                                className="ka-status-mark"
+                                data-tone="muted"
+                                key={tag}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {recipe.sourceUrl ? (
+                          <p className="mt-3 text-sm font-semibold leading-6">
+                            <a
+                              className="font-black text-[var(--herb-dark)]"
+                              href={recipe.sourceUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              Source recipe
+                            </a>
+                          </p>
+                        ) : null}
                         {recipe.feedbackReason ? (
                           <p className="mt-3 text-sm font-semibold leading-6 text-[var(--muted-ink)]">
                             {recipe.feedbackReason}
@@ -216,8 +383,7 @@ export default async function RecipesPage() {
             </div>
           ) : (
             <div className="ka-panel border-dashed p-6 text-sm font-semibold leading-6 text-[var(--muted-ink)]">
-              Save a worked-well meal from meal memory or week closeout to start
-              the household cookbook.
+              No recipes match the current filters.
             </div>
           )}
         </Section>

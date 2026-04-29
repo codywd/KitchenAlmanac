@@ -216,6 +216,8 @@ const savedRecipeSchemaShape = {
   prepTimeTotalMinutes: z.number().int().nonnegative().optional().nullable(),
   servings: z.number().int().positive().default(7),
   sourceRecipe: z.unknown().optional().nullable(),
+  sourceUrl: z.string().url().optional().nullable(),
+  tags: z.array(z.string().trim().min(1)).default([]),
   validation: validationFlagsSchema.default({
     budgetFit: false,
     diabetesFriendly: false,
@@ -248,6 +250,8 @@ export const savedRecipePatchSchema = z.object({
   prepTimeTotalMinutes: z.number().int().nonnegative().optional().nullable(),
   servings: z.number().int().positive().optional(),
   sourceRecipe: z.unknown().optional().nullable(),
+  sourceUrl: z.string().url().optional().nullable(),
+  tags: z.array(z.string().trim().min(1)).optional(),
   validation: validationFlagsPatchSchema.optional(),
 });
 

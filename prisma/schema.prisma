@@ -329,11 +329,13 @@ model SavedRecipe {
   weeknightTimeSafe     Boolean             @default(false)
   validationNotes       String?
   sourceRecipe          Json?
+  sourceUrl             String?
   sourceMealId          String?
   sourceMealName        String?
   sourceMealDate        DateTime?
   sourceWeekId          String?
   sourceWeekStart       DateTime?
+  tags                  String[]            @default([])
   feedbackStatus        MealFeedbackStatus?
   feedbackReason        String?
   feedbackTweaks        String?

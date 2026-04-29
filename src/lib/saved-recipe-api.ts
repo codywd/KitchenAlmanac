@@ -69,6 +69,8 @@ function savedRecipeCreateData({
       payload.sourceRecipe === undefined
         ? undefined
         : jsonInput(payload.sourceRecipe),
+    sourceUrl: payload.sourceUrl ?? null,
+    tags: payload.tags,
     updatedByUserId: userId,
     validationNotes: payload.validation.validationNotes ?? null,
     weeknightTimeSafe: payload.validation.weeknightTimeSafe,
@@ -143,6 +145,8 @@ function savedRecipePatchData({
     ...(payload.sourceRecipe !== undefined
       ? { sourceRecipe: jsonInput(payload.sourceRecipe) }
       : {}),
+    ...(payload.sourceUrl !== undefined ? { sourceUrl: payload.sourceUrl } : {}),
+    ...(payload.tags !== undefined ? { tags: payload.tags } : {}),
     ...(payload.validation?.budgetFit !== undefined
       ? { budgetFit: payload.validation.budgetFit }
       : {}),

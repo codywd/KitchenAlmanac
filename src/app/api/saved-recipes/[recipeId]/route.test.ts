@@ -78,14 +78,25 @@ describe("saved recipe item API", () => {
     expect(body.savedRecipe).toEqual(routeState.recipe);
   });
 
-  it("patches saved recipes with actor audit fields", async () => {
-    const response = await PATCH(request({ active: false }), params);
+  it("patches saved recipes with metadata and actor audit fields", async () => {
+    const response = await PATCH(
+      request({
+        active: false,
+        sourceUrl: "https://example.com/rice-bowls",
+        tags: ["weeknight", "pantry"],
+      }),
+      params,
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(service.updateSavedRecipeForFamily).toHaveBeenCalledWith({
       familyId: "family_1",
-      payload: { active: false },
+      payload: {
+        active: false,
+        sourceUrl: "https://example.com/rice-bowls",
+        tags: ["weeknight", "pantry"],
+      },
       recipeId: "recipe_1",
       userId: "user_key_creator",
     });

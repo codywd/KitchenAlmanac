@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  BarChart3,
   Brain,
   BookOpen,
   CalendarDays,
@@ -262,6 +263,13 @@ export default async function MealMemoryPage() {
                 <Link className="ka-button-secondary gap-2" href="/recipes">
                   Recipes
                   <BookOpen size={16} />
+                </Link>
+                <Link
+                  className="ka-button-secondary gap-2"
+                  href="/meal-memory/analytics"
+                >
+                  Analytics
+                  <BarChart3 size={16} />
                 </Link>
               </div>
             ) : null

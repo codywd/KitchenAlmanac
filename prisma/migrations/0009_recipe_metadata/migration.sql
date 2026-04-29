@@ -1,0 +1,3 @@
+ALTER TABLE "SavedRecipe"
+ADD COLUMN "sourceUrl" TEXT,
+ADD COLUMN "tags" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

@@ -29,10 +29,10 @@ directly.
 | GET | `/api/planning-brief` | `getPlanningBrief` | Outside-planner brief. Supports `weekStart` and `budgetTargetCents`. |
 | POST | `/api/import/meal-plan` | `importMealPlan` | Imports the outside-LLM weekly JSON. The GPT spec uses the `{ weekStart, plan }` envelope. |
 | GET | `/api/saved-recipes` | `listSavedRecipes` | Lists saved recipes with `active=true`, `active=false`, or `active=all`. |
-| POST | `/api/saved-recipes` | `createSavedRecipe` | Creates a saved recipe from JSON recipe fields. |
+| POST | `/api/saved-recipes` | `createSavedRecipe` | Creates a saved recipe from JSON recipe fields, tags, and an optional source URL. |
 | POST | `/api/saved-recipes/from-meal` | `saveMealToRecipeLibrary` | Saves or refreshes a recipe from an existing meal. |
 | GET | `/api/saved-recipes/{recipeId}` | `getSavedRecipe` | Reads full saved recipe details. |
-| PATCH | `/api/saved-recipes/{recipeId}` | `updateSavedRecipe` | Patches recipe fields or archives/restores with `active`. |
+| PATCH | `/api/saved-recipes/{recipeId}` | `updateSavedRecipe` | Patches recipe fields, tags, source URL, or archives/restores with `active`. |
 | GET | `/api/pantry-staples` | `listPantryStaples` | Lists pantry staples with `active=true`, `active=false`, or `active=all`. |
 | POST | `/api/pantry-staples` | `upsertPantryStaple` | Adds or reactivates a pantry staple. |
 | PATCH | `/api/pantry-staples/{stapleId}` | `updatePantryStaple` | Activates or deactivates a pantry staple. |
@@ -71,5 +71,6 @@ not included in the Custom GPT action spec.
 The user-facing page routes include `/`, `/login`, `/calendar`, `/planner`,
 `/import`, `/weeks/{weekId}`, `/weeks/{weekId}/review`,
 `/weeks/{weekId}/shopping`, `/weeks/{weekId}/closeout`, `/cook/{mealId}`,
-`/ingredients`, `/meal-memory`, `/recipes`, `/rejected-meals`, `/household`,
-`/family`, `/account`, `/api-keys`, and `/setup`.
+`/ingredients`, `/meal-memory`, `/meal-memory/analytics`, `/recipes`,
+`/recipes/new`, `/rejected-meals`, `/household`, `/family`, `/account`,
+`/api-keys`, and `/setup`.

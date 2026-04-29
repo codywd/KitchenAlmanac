@@ -1689,6 +1689,7 @@ components:
         - costEstimateCents
         - prepTimeTotalMinutes
         - servings
+        - tags
       properties:
         id:
           type: string
@@ -1697,6 +1698,14 @@ components:
         cuisine:
           type: string
           nullable: true
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
         costEstimateCents:
           type: integer
           nullable: true
@@ -1715,6 +1724,7 @@ components:
         - ingredients
         - methodSteps
         - servings
+        - tags
         - createdAt
         - updatedAt
       properties:
@@ -1727,6 +1737,14 @@ components:
         cuisine:
           type: string
           nullable: true
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
         ingredients:
           type: array
           items:
@@ -1821,6 +1839,15 @@ components:
               type: object
               nullable: true
               additionalProperties: true
+            sourceUrl:
+              type: string
+              format: uri
+              nullable: true
+            tags:
+              type: array
+              items:
+                type: string
+              default: []
     SavedRecipePatchRequest:
       type: object
       description: Supply only fields to change. Set active false to archive or true to restore.
@@ -1832,6 +1859,14 @@ components:
         cuisine:
           type: string
           nullable: true
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
         ingredients:
           type: array
           items:
@@ -2068,6 +2103,7 @@ components:
         - prepTimeTotalMinutes
         - servings
         - source
+        - tags
       properties:
         id:
           type: string
@@ -2085,6 +2121,10 @@ components:
           type: integer
           nullable: true
         flags:
+          type: array
+          items:
+            type: string
+        tags:
           type: array
           items:
             type: string
