@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   archiveSavedRecipeAction,
+  createSavedRecipeAction,
   replaceDinnerFromSavedRecipeAction,
   saveMealToRecipeLibraryAction,
   updateSavedRecipeAction,
@@ -73,7 +74,11 @@ const meal = {
   prepTimeActiveMinutes: 20,
   prepTimeTotalMinutes: 40,
   servings: 7,
-  sourceRecipe: { dinner_title: "Turkey Rice Bowls" },
+  sourceRecipe: {
+    dinner_title: "Turkey Rice Bowls",
+    source_url: "https://example.com/turkey-rice-bowls",
+    tags: ["Weeknight", "kid favorite"],
+  },
   validationNotes: null,
   weeknightTimeSafe: true,
 };
@@ -185,7 +190,9 @@ describe("recipe library actions", () => {
         active: true,
         familyId: "family_1",
         name: "Turkey Rice Bowls",
+        sourceUrl: "https://example.com/turkey-rice-bowls",
         sourceMealId: "meal_1",
+        tags: ["weeknight", "kid favorite"],
       }),
     });
     expect(result).toEqual({
@@ -195,6 +202,45 @@ describe("recipe library actions", () => {
     expect(actionState.revalidated).toEqual(
       expect.arrayContaining(["/meal-memory", "/planner", "/recipes"]),
     );
+  });
+
+  it("creates a manual saved recipe from row-based form fields", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    const result = await createSavedRecipeAction(
+      {},
+      formData({
+        active: "on",
+        budgetFit: "on",
+        costEstimateDollars: "12.25",
+        ingredientItem: "Rice",
+        ingredientQuantity: "2 cups",
+        methodStepsText: "Cook rice.",
+        name: "Manual Rice",
+        noFishSafe: "on",
+        recipeId: "",
+        servings: "4",
+        sourceUrl: "https://example.com/manual-rice",
+        tagsText: "simple, pantry",
+      }),
+    );
+
+    expect(db.savedRecipe.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        costEstimateCents: 1225,
+        createdByUserId: "user_owner",
+        familyId: "family_1",
+        ingredients: [{ item: "Rice", quantity: "2 cups" }],
+        name: "Manual Rice",
+        sourceUrl: "https://example.com/manual-rice",
+        tags: ["simple", "pantry"],
+      }),
+    });
+    expect(result).toEqual({
+      message: "Created Manual Rice.",
+      recipeId: "recipe_1",
+    });
   });
 
   it("updates the existing saved recipe instead of duplicating a source meal", async () => {
@@ -242,6 +288,8 @@ describe("recipe library actions", () => {
         diabetesFriendly: "",
         heartHealthy: "",
         ingredientsJson: JSON.stringify([{ item: "ground turkey", quantity: "2 lb" }]),
+        ingredientItem: "ground turkey",
+        ingredientQuantity: "2 lb",
         kidFriendly: "on",
         methodStepsText: "Cook turkey.\nServe bowls.",
         name: "Better Turkey Bowls",
@@ -250,6 +298,8 @@ describe("recipe library actions", () => {
         prepTimeTotalMinutes: "40",
         recipeId: "recipe_1",
         servings: "7",
+        sourceUrl: "https://example.com/better-turkey",
+        tagsText: "weeknight, better",
         weeknightTimeSafe: "on",
       }),
     );
@@ -261,6 +311,8 @@ describe("recipe library actions", () => {
         ingredients: [{ item: "ground turkey", quantity: "2 lb" }],
         methodSteps: ["Cook turkey.", "Serve bowls."],
         name: "Better Turkey Bowls",
+        sourceUrl: "https://example.com/better-turkey",
+        tags: ["weeknight", "better"],
         updatedByUserId: "user_owner",
       }),
       where: {

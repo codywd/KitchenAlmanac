@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { addDays, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { assertCanManagePlans, requireFamilyContext } from "@/lib/family";
+import { parseSavedRecipeFormData } from "@/lib/saved-recipe-form";
 import {
   buildSavedRecipeDataFromMeal,
   savedRecipeToMealCreateData,
@@ -42,119 +43,24 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-function optionalText(formData: FormData, key: string) {
-  const value = text(formData, key);
-
-  return value || null;
-}
-
-function checkbox(formData: FormData, key: string) {
-  return formData.get(key) === "on";
-}
-
-function parseOptionalInteger(value: string, label: string) {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = Number(value);
-
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`${label} must be a non-negative whole number.`);
-  }
-
-  return parsed;
-}
-
-function parseServings(value: string) {
-  const parsed = Number(value);
-
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error("Servings must be a positive whole number.");
-  }
-
-  return parsed;
-}
-
-function parseCostEstimateCents(value: string) {
-  if (!value) {
-    return null;
-  }
-
-  if (!/^\d+(\.\d{1,2})?$/.test(value)) {
-    throw new Error("Cost estimate must be a positive dollar amount.");
-  }
-
-  return Math.round(Number(value) * 100);
-}
-
-function parseIngredients(value: string) {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-
-    if (!Array.isArray(parsed)) {
-      throw new Error("Ingredients must be a JSON array.");
-    }
-
-    for (const item of parsed) {
-      if (!item || typeof item !== "object") {
-        throw new Error("Each ingredient must be an object.");
-      }
-
-      const record = item as { item?: unknown; name?: unknown };
-      const name = typeof record.item === "string" ? record.item : record.name;
-
-      if (typeof name !== "string" || !name.trim()) {
-        throw new Error("Each ingredient needs an item or name.");
-      }
-    }
-
-    return parsed;
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error("Ingredients must be valid JSON.");
-    }
-
-    throw error;
-  }
-}
-
 function recipeUpdateData(formData: FormData, userId: string) {
-  const name = text(formData, "name");
-
-  if (!name) {
-    throw new Error("Name the recipe before saving it.");
-  }
+  const parsed = parseSavedRecipeFormData(formData, userId);
 
   return {
-    active: checkbox(formData, "active"),
-    batchPrepNote: optionalText(formData, "batchPrepNote"),
-    budgetFit: checkbox(formData, "budgetFit"),
-    costEstimateCents: parseCostEstimateCents(text(formData, "costEstimateDollars")),
-    cuisine: optionalText(formData, "cuisine"),
-    diabetesFriendly: checkbox(formData, "diabetesFriendly"),
-    heartHealthy: checkbox(formData, "heartHealthy"),
-    ingredients: parseIngredients(text(formData, "ingredientsJson")) as Prisma.InputJsonValue,
-    kidAdaptations: optionalText(formData, "kidAdaptations"),
-    kidFriendly: checkbox(formData, "kidFriendly"),
-    methodSteps: text(formData, "methodStepsText")
-      .split(/\r?\n/)
-      .map((step) => step.trim())
-      .filter(Boolean),
-    name,
-    noFishSafe: checkbox(formData, "noFishSafe"),
-    prepTimeActiveMinutes: parseOptionalInteger(
-      text(formData, "prepTimeActiveMinutes"),
-      "Active prep time",
-    ),
-    prepTimeTotalMinutes: parseOptionalInteger(
-      text(formData, "prepTimeTotalMinutes"),
-      "Total prep time",
-    ),
-    servings: parseServings(text(formData, "servings")),
-    updatedByUserId: userId,
-    validationNotes: optionalText(formData, "validationNotes"),
-    weeknightTimeSafe: checkbox(formData, "weeknightTimeSafe"),
+    ...parsed,
+    ingredients: parsed.ingredients as Prisma.InputJsonValue,
+  };
+}
+
+function recipeCreateData(formData: FormData, familyId: string, userId: string) {
+  const parsed = parseSavedRecipeFormData(formData, userId);
+
+  return {
+    ...parsed,
+    createdByUserId: userId,
+    familyId,
+    ingredients: parsed.ingredients as Prisma.InputJsonValue,
+    sourceRecipe: Prisma.JsonNull,
   };
 }
 
@@ -247,6 +153,34 @@ export async function saveMealToRecipeLibraryAction(formData: FormData) {
 
 export async function saveMealToRecipeLibraryFormAction(formData: FormData) {
   await saveMealToRecipeLibraryAction(formData);
+}
+
+export async function createSavedRecipeAction(
+  _previousState: SavedRecipeActionState,
+  formData: FormData,
+): Promise<SavedRecipeActionState> {
+  const context = await requireFamilyContext("/recipes/new");
+  assertCanManagePlans(context.role);
+  let data: ReturnType<typeof recipeCreateData>;
+
+  try {
+    data = recipeCreateData(formData, context.family.id, context.user.id);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not create recipe.",
+    };
+  }
+
+  const recipe = await getDb().savedRecipe.create({
+    data,
+  });
+
+  revalidateRecipeSurfaces();
+
+  return {
+    message: `Created ${data.name}.`,
+    recipeId: recipe.id,
+  };
 }
 
 export async function updateSavedRecipeAction(

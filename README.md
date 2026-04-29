@@ -79,6 +79,8 @@ Everyone in the family can open `/meal-memory` to see a derived preference dashb
 
 Owners/admins can use the dashboard quick actions to mark a meal as liked or save an avoid pattern into rejected meals. The page does not add a new persistence model; it reads the same family-scoped meal, vote, feedback, and rejection records already used by the planner brief.
 
+`/meal-memory/analytics` adds a chart-heavy rollup for the last 12 family weeks: estimated cost, actual cost, budget target, actual-vs-estimate deltas, most expensive meals, biggest estimate misses, closeout outcome mix, weekly health-flag coverage, and imported nutrition averages. Nutrition values are labeled as imported planning estimates only, not medical advice.
+
 ## Week Review And Swaps
 
 Every imported week has a derived review board at `/weeks/:weekId/review`. It shows day-by-day vote signals, active rejection matches, recent repeats, missing planning flags, budget summary, and ingredient impact before the week starts.
@@ -97,7 +99,9 @@ Saved closeouts update `/meal-memory`, `/planner`, and `GET /api/planning-brief`
 
 Every family has a cookbook at `/recipes`. Family members can browse saved recipes, while owners/admins can save proven meals from meal memory or week closeout, edit recipe details, and archive or restore recipes.
 
-Saved recipes are curated copies of past meals, including ingredients, method steps, cost and prep estimates, planning flags, source meal metadata, and closeout feedback. Active saved recipes appear in `/planner`, `GET /api/planning-brief`, and `GET /api/household-profile` as household cookbook context. Owners/admins can also use saved recipes from `/weeks/:weekId/review` to replace one dinner without pasting outside-LLM JSON.
+Owners/admins can also create a recipe manually from `/recipes/new`. The recipe editor uses ingredient rows, tags, cuisine, health flags, source URL, method steps, and cost/prep estimates while still storing ingredients in the existing JSON shape.
+
+Saved recipes are curated copies of past meals, including ingredients, method steps, cost and prep estimates, planning flags, source meal metadata, tags, source URL, and closeout feedback. The recipe list supports search and filters for active/archive state, tags, cuisine, health flags, and text across recipe names, cuisines, tags, and ingredient names. Active saved recipes appear in `/planner`, `GET /api/planning-brief`, and `GET /api/household-profile` as household cookbook context. Owners/admins can also use saved recipes from `/weeks/:weekId/review` to replace one dinner without pasting outside-LLM JSON.
 
 ## Shared Shopping And Pantry
 
@@ -268,8 +272,9 @@ npm run build
 - Vote counts/comments appear on calendar tiles, week detail, cook view, and in `/api/household-profile`.
 - Family members open `/meal-memory` and see wanted meals, repeat candidates, avoid signals, member vote patterns, comment themes, and worked-well meals.
 - Owner/admin uses `/meal-memory` to mark a meal as liked and save an avoid pattern; member users do not see those controls.
+- Family members open `/meal-memory/analytics` and see charted cost, outcome, flag, and imported nutrition-estimate trends.
 - Owner/admin opens `/planner`, changes week/budget, saves and copies the ChatGPT prompt, pastes returned JSON into the same session, previews the review, and imports the reviewed plan.
-- Owner/admin saves a worked-well meal to `/recipes`, edits recipe details, archives/restores it, and sees active recipes in the planner brief.
+- Owner/admin creates a manual recipe from `/recipes/new`, edits row-based ingredients, tags, source URL, health flags, archives/restores it, and sees active recipes in the planner brief.
 - Owner/admin opens `/weeks/:weekId/review`, replaces one dinner from a saved recipe, and verifies the old votes disappear from the replacement.
 - Owner/admin swaps a dinner from `/weeks/:weekId/review`, opens `/ingredients?weekId=...`, reviews added/removed/changed grocery items, refreshes the stored grocery list, and confirms week detail shows the updated list.
 - Owner/admin opens `/weeks/:weekId/shopping`, marks items bought/already-have, adds a pantry staple, and sees matching items regroup.

@@ -91,6 +91,8 @@ describe("saved recipe collection API", () => {
         ingredients: [{ item: "Rice" }],
         methodSteps: ["Cook."],
         name: "Rice Bowls",
+        sourceUrl: "https://example.com/rice-bowls",
+        tags: ["weeknight", "pantry"],
       }),
     );
     const body = await response.json();
@@ -98,7 +100,11 @@ describe("saved recipe collection API", () => {
     expect(response.status).toBe(201);
     expect(service.createSavedRecipeForFamily).toHaveBeenCalledWith({
       familyId: "family_1",
-      payload: expect.objectContaining({ name: "Rice Bowls" }),
+      payload: expect.objectContaining({
+        name: "Rice Bowls",
+        sourceUrl: "https://example.com/rice-bowls",
+        tags: ["weeknight", "pantry"],
+      }),
       userId: "user_key_creator",
     });
     expect(body.savedRecipe).toEqual(routeState.recipes[0]);
