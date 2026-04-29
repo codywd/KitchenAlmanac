@@ -223,7 +223,7 @@ export default async function CookPage({
             </header>
 
             <div className="grid xl:grid-cols-[330px_minmax(0,1fr)_360px]">
-              <aside className="p-5 xl:sticky xl:top-6 xl:self-start xl:border-r xl:border-[var(--line)] xl:p-6">
+              <aside className="p-5 xl:self-start xl:border-r xl:border-[var(--line)] xl:p-6">
                 <CookIngredientChecklist ingredients={view.ingredients} />
               </aside>
 
@@ -231,7 +231,7 @@ export default async function CookPage({
                 <CookSteps steps={view.steps} />
               </main>
 
-              <aside className="border-t border-[var(--line)] p-5 xl:sticky xl:top-6 xl:self-start xl:border-t-0 xl:p-6">
+              <aside className="border-t border-[var(--line)] p-5 xl:self-start xl:border-t-0 xl:p-6">
                 {view.health.plateBuild ||
                 view.health.changes.length ||
                 view.health.whyItHelps.length ? (
