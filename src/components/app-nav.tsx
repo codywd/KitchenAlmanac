@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Upload,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,34 +26,74 @@ import { useEffect, useId, useState } from "react";
 import { logoutAction } from "@/app/auth-actions";
 import type { CurrentUser } from "@/lib/session";
 
-const navItems = [
-  { href: "/calendar", icon: CalendarDays, label: "Calendar" },
-  { href: "/setup", icon: ClipboardCheck, label: "Setup" },
-  { href: "/planner", icon: NotebookPen, label: "Planner" },
-  { href: "/recipes", icon: BookOpen, label: "Recipes" },
-  { href: "/meal-memory", icon: Brain, label: "Memory" },
-  { href: "/import", icon: Upload, label: "Import" },
-  { href: "/ingredients", icon: ListChecks, label: "Ingredients" },
-  { href: "/rejected-meals", icon: ClipboardList, label: "Rejected" },
-  { href: "/api-keys", icon: KeyRound, label: "API keys" },
-  { href: "/household", icon: ShieldCheck, label: "Guidance" },
-  { href: "/family", icon: House, label: "Family" },
-  { adminOnly: true, href: "/ops", icon: Activity, label: "Ops" },
-  { href: "/account", icon: UserRound, label: "Account" },
+type NavItem = {
+  adminOnly?: boolean;
+  activePrefixes?: string[];
+  href: string;
+  icon: LucideIcon;
+  label: string;
+};
+
+type NavGroup = {
+  items: NavItem[];
+  label: string;
+};
+
+const navGroups: NavGroup[] = [
+  {
+    label: "Kitchen",
+    items: [
+      {
+        activePrefixes: ["/weeks", "/cook"],
+        href: "/calendar",
+        icon: CalendarDays,
+        label: "Calendar",
+      },
+      { href: "/planner", icon: NotebookPen, label: "Planner" },
+      { href: "/recipes", icon: BookOpen, label: "Recipes" },
+      { href: "/ingredients", icon: ListChecks, label: "Ingredients" },
+      { href: "/meal-memory", icon: Brain, label: "Memory" },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { href: "/setup", icon: ClipboardCheck, label: "Setup" },
+      { href: "/household", icon: ShieldCheck, label: "Guidance" },
+      { href: "/family", icon: House, label: "Family" },
+      { href: "/rejected-meals", icon: ClipboardList, label: "Rejected" },
+      { href: "/import", icon: Upload, label: "Import" },
+      { href: "/api-keys", icon: KeyRound, label: "API keys" },
+      { adminOnly: true, href: "/ops", icon: Activity, label: "Ops" },
+    ],
+  },
 ];
 
-function isActivePath(pathname: string, href: string) {
-  if (href === "/calendar") {
-    return pathname === href;
+function isActivePath(pathname: string, item: NavItem) {
+  if (pathname === item.href) {
+    return true;
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  if (item.href !== "/calendar" && pathname.startsWith(`${item.href}/`)) {
+    return true;
+  }
+
+  return (
+    item.activePrefixes?.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    ) ?? false
+  );
 }
 
-function visibleNavItems(role?: string) {
+function visibleNavGroups(role?: string) {
   const canManage = role === "OWNER" || role === "ADMIN";
 
-  return navItems.filter((item) => !item.adminOnly || canManage);
+  return navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || canManage),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export function DesktopNav({
@@ -63,28 +104,36 @@ export function DesktopNav({
   role?: string;
 }) {
   const pathname = usePathname();
+  const groups = visibleNavGroups(role);
 
   return (
-    <nav aria-label="Desktop navigation" className="mt-10 space-y-1">
-      {visibleNavItems(role).map((item) => {
-        const Icon = item.icon;
-        const active = isActivePath(pathname, item.href);
+    <nav aria-label="Desktop navigation" className="mt-10">
+      {groups.map((group) => (
+        <div className="nav-group" data-collapsed={collapsed} key={group.label}>
+          <div className="nav-group-label sidebar-expanded">{group.label}</div>
+          <div className="space-y-1">
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const active = isActivePath(pathname, item);
 
-        return (
-          <Link
-            aria-label={collapsed ? item.label : undefined}
-            className="nav-link flex min-h-11 items-center gap-3 px-3 text-sm font-extrabold transition"
-            data-active={active}
-            data-collapsed={collapsed}
-            href={item.href}
-            key={item.href}
-            title={collapsed ? item.label : undefined}
-          >
-            <Icon className="shrink-0" size={17} />
-            <span className="sidebar-expanded">{item.label}</span>
-          </Link>
-        );
-      })}
+              return (
+                <Link
+                  aria-label={collapsed ? item.label : undefined}
+                  className="nav-link flex min-h-11 items-center gap-3 px-3 text-sm font-extrabold transition"
+                  data-active={active}
+                  data-collapsed={collapsed}
+                  href={item.href}
+                  key={item.href}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <Icon className="shrink-0" size={17} />
+                  <span className="sidebar-expanded">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 }
@@ -103,8 +152,9 @@ export function MobileNav({
   const pathname = usePathname();
   const menuId = useId();
   const [open, setOpen] = useState(false);
-  const items = visibleNavItems(role);
-  const activeItem = items.find((item) => isActivePath(pathname, item.href));
+  const groups = visibleNavGroups(role);
+  const items = groups.flatMap((group) => group.items);
+  const activeItem = items.find((item) => isActivePath(pathname, item));
 
   useEffect(() => {
     if (!open) {
@@ -157,24 +207,31 @@ export function MobileNav({
                 </p>
               </div>
             </div>
-            <nav className="mt-3 grid gap-1" aria-label="Mobile navigation">
-              {items.map((item) => {
-                const Icon = item.icon;
-                const active = isActivePath(pathname, item.href);
+            <nav className="mt-3" aria-label="Mobile navigation">
+              {groups.map((group) => (
+                <div className="mobile-nav-group" key={group.label}>
+                  <div className="mobile-nav-group-label">{group.label}</div>
+                  <div className="grid gap-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActivePath(pathname, item);
 
-                return (
-                  <Link
-                    className="mobile-menu-link flex min-h-11 items-center gap-3 px-3 text-sm font-extrabold transition"
-                    data-active={active}
-                    href={item.href}
-                    key={item.href}
-                    onClick={() => setOpen(false)}
-                  >
-                    <Icon size={17} />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+                      return (
+                        <Link
+                          className="mobile-menu-link flex min-h-11 items-center gap-3 px-3 text-sm font-extrabold transition"
+                          data-active={active}
+                          href={item.href}
+                          key={item.href}
+                          onClick={() => setOpen(false)}
+                        >
+                          <Icon size={17} />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
             <MobileUserMenu family={family} role={role} user={user} />
           </div>
@@ -210,6 +267,10 @@ export function MobileUserMenu({
           </div>
         ) : null}
       </div>
+      <Link className="mobile-account-link" href="/account">
+        <UserRound size={16} />
+        Account
+      </Link>
       <form action={logoutAction} className="mt-3">
         <button className="ka-button-secondary flex w-full gap-2">
           <LogOut size={15} />

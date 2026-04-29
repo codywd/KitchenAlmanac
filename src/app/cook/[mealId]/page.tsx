@@ -19,6 +19,7 @@ import { recordFeedbackAction } from "@/app/meal-actions";
 import { CookIngredientChecklist } from "@/components/cook-ingredient-checklist";
 import { CookSteps } from "@/components/cook-steps";
 import { AppShell } from "@/components/app-shell";
+import { MealServingsForm } from "@/components/meal-servings-form";
 import { MealVotePanel } from "@/components/meal-vote-panel";
 import { buildCookViewModel } from "@/lib/cook-view";
 import { getDb } from "@/lib/db";
@@ -195,6 +196,13 @@ export default async function CookPage({
                     {view.servings}
                   </div>
                   <div className="text-sm font-semibold text-[var(--muted-ink)]">servings</div>
+                  {canManage ? (
+                    <MealServingsForm
+                      className="mt-3"
+                      mealId={meal.id}
+                      servings={view.servings}
+                    />
+                  ) : null}
                 </div>
                 <div>
                   <Clock3 className="text-[var(--tomato)]" size={20} />

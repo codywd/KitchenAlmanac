@@ -465,6 +465,45 @@ body::before {
   text-align: center;
 }
 
+.desktop-account-link {
+  color: var(--ink);
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.desktop-account-link:hover {
+  color: var(--tomato-dark);
+  transform: translateY(-1px);
+}
+
+.nav-rail[data-collapsed="true"] .desktop-account-link {
+  display: grid;
+  min-height: 2.75rem;
+  place-items: center;
+}
+
+.nav-group + .nav-group {
+  border-top: 1px solid rgba(62, 42, 24, 0.14);
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+}
+
+.nav-group[data-collapsed="true"] + .nav-group[data-collapsed="true"] {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.nav-group-label {
+  color: rgba(111, 88, 65, 0.82);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  margin-bottom: 0.35rem;
+  padding-inline: 0.75rem;
+  text-transform: uppercase;
+}
+
 .nav-link {
   color: var(--muted-ink);
   position: relative;
@@ -546,6 +585,22 @@ body::before {
   z-index: 40;
 }
 
+.mobile-nav-group + .mobile-nav-group {
+  border-top: 1px solid rgba(62, 42, 24, 0.14);
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.mobile-nav-group-label {
+  color: rgba(111, 88, 65, 0.82);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  margin-bottom: 0.35rem;
+  padding-inline: 0.75rem;
+  text-transform: uppercase;
+}
+
 .mobile-menu-link {
   border-left: 3px solid transparent;
   color: var(--muted-ink);
@@ -564,6 +619,30 @@ body::before {
 
 .mobile-menu-user {
   margin-top: 0.85rem;
+}
+
+.mobile-account-link {
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.85rem;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.mobile-account-link:hover {
+  background: rgba(255, 253, 245, 0.72);
+  border-color: var(--tomato);
+  color: var(--tomato-dark);
 }
 
 .calendar-tile {
