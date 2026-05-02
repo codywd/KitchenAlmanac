@@ -4,6 +4,7 @@ import {
   BookOpen,
   Clock,
   DollarSign,
+  Pencil,
   Plus,
   Search,
 } from "lucide-react";
@@ -23,6 +24,13 @@ import {
   type SavedRecipeActiveFilter,
   type SavedRecipeFlagFilter,
 } from "@/lib/saved-recipe-filters";
+import {
+  firstRouteParam,
+  routeParamValues,
+  routeWithParams,
+  type RouteParamValue,
+  type RouteSearchParams,
+} from "@/lib/routed-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -53,16 +61,22 @@ function flagList(recipe: {
   ].filter(Boolean);
 }
 
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
+type RecipesSearchParams = RouteSearchParams & {
+  active?: RouteParamValue;
+  cuisine?: RouteParamValue;
+  flag?: RouteParamValue;
+  menu?: RouteParamValue;
+  q?: RouteParamValue;
+  recipeId?: RouteParamValue;
+  tag?: RouteParamValue;
+};
+
+function firstParam(value: RouteParamValue) {
+  return firstRouteParam(value);
 }
 
-function arrayParam(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value.filter(Boolean);
-  }
-
-  return value ? [value] : [];
+function arrayParam(value: RouteParamValue) {
+  return routeParamValues(value);
 }
 
 function activeParam(value: string | string[] | undefined): SavedRecipeActiveFilter {
@@ -79,16 +93,22 @@ function flagParams(value: string | string[] | undefined) {
   );
 }
 
+function recipeEditHref(params: RecipesSearchParams, recipeId: string) {
+  return routeWithParams(
+    "/recipes",
+    params,
+    {
+      menu: "edit",
+      recipeId,
+    },
+    `recipe-${recipeId}-edit`,
+  );
+}
+
 export default async function RecipesPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    active?: string | string[];
-    cuisine?: string | string[];
-    flag?: string | string[];
-    q?: string | string[];
-    tag?: string | string[];
-  }>;
+  searchParams: Promise<RecipesSearchParams>;
 }) {
   const context = await requireFamilyContext("/recipes");
   const params = await searchParams;
@@ -117,6 +137,8 @@ export default async function RecipesPage({
   const activeRecipes = recipes.filter((recipe) => recipe.active);
   const archivedRecipes = recipes.filter((recipe) => !recipe.active);
   const selectedFlags = flagParams(params.flag);
+  const selectedMenu = firstParam(params.menu);
+  const selectedRecipeId = firstParam(params.recipeId);
   const filters = {
     active: activeParam(params.active),
     cuisines: arrayParam(params.cuisine),
@@ -271,6 +293,9 @@ export default async function RecipesPage({
             <div className="grid gap-4">
               {filteredRecipes.map((recipe) => {
                 const flags = flagList(recipe);
+                const editPanelId = `recipe-${recipe.id}-edit`;
+                const editIsSelected =
+                  selectedMenu === "edit" && selectedRecipeId === recipe.id;
 
                 return (
                   <article
@@ -348,27 +373,40 @@ export default async function RecipesPage({
                         ) : null}
                       </div>
                       {canManage ? (
-                        <form action={archiveSavedRecipeAction}>
-                          <input name="recipeId" type="hidden" value={recipe.id} />
-                          <input
-                            name="active"
-                            type="hidden"
-                            value={recipe.active ? "false" : "true"}
-                          />
-                          <button className="ka-button-secondary gap-2">
-                            {recipe.active ? (
-                              <Archive size={15} />
-                            ) : (
-                              <ArchiveRestore size={15} />
-                            )}
-                            {recipe.active ? "Archive" : "Restore"}
-                          </button>
-                        </form>
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            className="ka-button-secondary gap-2"
+                            href={recipeEditHref(params, recipe.id)}
+                          >
+                            <Pencil size={15} />
+                            Edit
+                          </Link>
+                          <form action={archiveSavedRecipeAction}>
+                            <input name="recipeId" type="hidden" value={recipe.id} />
+                            <input
+                              name="active"
+                              type="hidden"
+                              value={recipe.active ? "false" : "true"}
+                            />
+                            <button className="ka-button-secondary gap-2">
+                              {recipe.active ? (
+                                <Archive size={15} />
+                              ) : (
+                                <ArchiveRestore size={15} />
+                              )}
+                              {recipe.active ? "Archive" : "Restore"}
+                            </button>
+                          </form>
+                        </div>
                       ) : null}
                     </div>
 
                     {canManage ? (
-                      <details className="mt-5 border-t border-[var(--line)] pt-4">
+                      <details
+                        className="mt-5 border-t border-[var(--line)] pt-4"
+                        id={editPanelId}
+                        open={editIsSelected}
+                      >
                         <summary className="cursor-pointer text-sm font-black text-[var(--herb-dark)]">
                           Edit recipe
                         </summary>

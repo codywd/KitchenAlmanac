@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpen } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   replaceDinnerFromSavedRecipeAction,
@@ -21,20 +21,30 @@ type SavedRecipeOption = {
 
 export function SavedRecipeSwapForm({
   date,
+  defaultOpen = false,
+  detailsId,
   recipes,
   weekId,
 }: {
   date: string;
+  defaultOpen?: boolean;
+  detailsId?: string;
   recipes: SavedRecipeOption[];
   weekId: string;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [state, action, pending] = useActionState(
     replaceDinnerFromSavedRecipeAction,
     initialState,
   );
 
   return (
-    <details className="border-t border-[var(--line)] pt-4">
+    <details
+      className="border-t border-[var(--line)] pt-4"
+      id={detailsId}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      open={open}
+    >
       <summary className="cursor-pointer text-sm font-black text-[var(--herb-dark)]">
         Swap from cookbook
       </summary>

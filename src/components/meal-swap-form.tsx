@@ -1,7 +1,7 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   replaceDinnerFromRecipeAction,
@@ -25,18 +25,28 @@ const sampleRecipe = `{
 
 export function MealSwapForm({
   date,
+  defaultOpen = false,
+  detailsId,
   weekId,
 }: {
   date: string;
+  defaultOpen?: boolean;
+  detailsId?: string;
   weekId: string;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [state, action, pending] = useActionState(
     replaceDinnerFromRecipeAction,
     initialState,
   );
 
   return (
-    <details className="border-t border-[var(--line)] pt-4">
+    <details
+      className="border-t border-[var(--line)] pt-4"
+      id={detailsId}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      open={open}
+    >
       <summary className="cursor-pointer text-sm font-black text-[var(--herb-dark)]">
         Swap dinner
       </summary>

@@ -1,10 +1,12 @@
 import {
   AlertTriangle,
   ArrowRight,
+  BookOpen,
   ChefHat,
   ClipboardCheck,
   ClipboardList,
   MessageSquareText,
+  RefreshCw,
   ShoppingBasket,
   ShoppingCart,
 } from "lucide-react";
@@ -24,6 +26,11 @@ import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
 import { aggregateIngredientsForWeek } from "@/lib/ingredients";
 import {
+  firstRouteParam,
+  routeWithParams,
+  type RouteParamValue,
+} from "@/lib/routed-menu";
+import {
   buildWeekReview,
   type WeekReviewDay,
   type WeekReviewIssue,
@@ -35,6 +42,11 @@ import {
 } from "@/lib/votes";
 
 export const dynamic = "force-dynamic";
+
+type WeekReviewSearchParams = {
+  day?: RouteParamValue;
+  menu?: RouteParamValue;
+};
 
 function issueTone(issue: WeekReviewIssue) {
   if (issue.severity === "warning") {
@@ -176,10 +188,15 @@ function IngredientUses({ day }: { day: WeekReviewDay }) {
 
 export default async function WeekReviewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ weekId: string }>;
+  searchParams: Promise<WeekReviewSearchParams>;
 }) {
   const { weekId } = await params;
+  const routedMenu = await searchParams;
+  const selectedDay = firstRouteParam(routedMenu.day);
+  const selectedMenu = firstRouteParam(routedMenu.menu);
   const context = await requireFamilyContext(`/weeks/${weekId}/review`);
   const canManage = canManagePlans(context.role);
   const week = await getDb().week.findFirst({
@@ -434,6 +451,21 @@ export default async function WeekReviewPage({
                 (candidate) => toDateOnly(candidate.date) === day.date,
               );
               const meal = slot?.day?.dinner;
+              const cookbookPanelId = `cookbook-${day.date}`;
+              const swapPanelId = `swap-${day.date}`;
+              const cookbookHref = routeWithParams(
+                `/weeks/${week.id}/review`,
+                {},
+                { day: day.date, menu: "cookbook" },
+                cookbookPanelId,
+              );
+              const swapHref = routeWithParams(
+                `/weeks/${week.id}/review`,
+                {},
+                { day: day.date, menu: "swap" },
+                swapPanelId,
+              );
+              const dayIsSelected = selectedDay === day.date;
 
               return (
                 <section
@@ -473,6 +505,24 @@ export default async function WeekReviewPage({
                               <ChefHat size={15} />
                               Cook
                             </Link>
+                          ) : null}
+                          {canManage ? (
+                            <>
+                              <Link
+                                className="ka-button-secondary gap-2"
+                                href={cookbookHref}
+                              >
+                                <BookOpen size={15} />
+                                Cookbook swap
+                              </Link>
+                              <Link
+                                className="ka-button-secondary gap-2"
+                                href={swapHref}
+                              >
+                                <RefreshCw size={15} />
+                                JSON swap
+                              </Link>
+                            </>
                           ) : null}
                         </div>
                       </div>
@@ -552,10 +602,19 @@ export default async function WeekReviewPage({
                         <>
                           <SavedRecipeSwapForm
                             date={day.date}
+                            defaultOpen={dayIsSelected && selectedMenu === "cookbook"}
+                            detailsId={cookbookPanelId}
+                            key={`${cookbookPanelId}-${dayIsSelected && selectedMenu === "cookbook"}`}
                             recipes={savedRecipes}
                             weekId={week.id}
                           />
-                          <MealSwapForm date={day.date} weekId={week.id} />
+                          <MealSwapForm
+                            date={day.date}
+                            defaultOpen={dayIsSelected && selectedMenu === "swap"}
+                            detailsId={swapPanelId}
+                            key={`${swapPanelId}-${dayIsSelected && selectedMenu === "swap"}`}
+                            weekId={week.id}
+                          />
                         </>
                       ) : null}
                     </aside>

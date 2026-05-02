@@ -26,8 +26,17 @@ import { buildCookViewModel } from "@/lib/cook-view";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
 import { getUserLlmSettingsForDisplay } from "@/lib/llm-settings";
+import {
+  firstRouteParam,
+  routeWithParams,
+  type RouteParamValue,
+} from "@/lib/routed-menu";
 
 export const dynamic = "force-dynamic";
+
+type CookSearchParams = {
+  menu?: RouteParamValue;
+};
 
 function NotebookSection({
   accent = "green",
@@ -53,10 +62,14 @@ function NotebookSection({
 
 export default async function CookPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ mealId: string }>;
+  searchParams: Promise<CookSearchParams>;
 }) {
   const { mealId } = await params;
+  const routedMenu = await searchParams;
+  const selectedMenu = firstRouteParam(routedMenu.menu);
   const context = await requireFamilyContext(`/cook/${mealId}`);
   const canManage = canManagePlans(context.role);
   const llmSettings = await getUserLlmSettingsForDisplay(context.user.id);
@@ -119,6 +132,12 @@ export default async function CookPage({
     })),
   });
   const validationCount = view.validationFlags.filter((flag) => flag.active).length;
+  const rejectionPatternHref = routeWithParams(
+    `/cook/${meal.id}`,
+    {},
+    { menu: "rejection-pattern" },
+    "rejection-pattern",
+  );
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -313,9 +332,18 @@ export default async function CookPage({
                   <form action={recordFeedbackAction} className="space-y-4">
                     <input name="mealId" type="hidden" value={meal.id} />
                     <input name="weekId" type="hidden" value={meal.dayPlan.week.id} />
-                    <p className="font-black text-[var(--muted-ink)]">
-                      Current: {view.feedbackStatus}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-black text-[var(--muted-ink)]">
+                        Current: {view.feedbackStatus}
+                      </p>
+                      <Link
+                        className="ka-button-secondary gap-2"
+                        href={rejectionPatternHref}
+                      >
+                        <ClipboardList size={15} />
+                        Rejection pattern
+                      </Link>
+                    </div>
                     <label className="block">
                       <span className="ka-label">
                         Status
@@ -353,7 +381,11 @@ export default async function CookPage({
                         placeholder="What should change next time?"
                       />
                     </label>
-                    <details className="group">
+                    <details
+                      className="group"
+                      id="rejection-pattern"
+                      open={selectedMenu === "rejection-pattern"}
+                    >
                       <summary className="cursor-pointer text-sm font-black text-[var(--herb-dark)]">
                         Rejection pattern
                       </summary>
