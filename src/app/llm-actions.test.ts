@@ -181,7 +181,8 @@ describe("LLM settings actions", () => {
   it("deletes only the signed-in user's LLM settings", async () => {
     const result = await deleteLlmSettingsAction();
 
-    expect(result).toEqual({ message: "LLM settings deleted." });
+    expect(result).toMatchObject({ message: "LLM settings deleted." });
+    expect(result.completedAt).toBeTruthy();
     expect(actionState.db?.userLlmSettings.deleteMany).toHaveBeenCalledWith({
       where: {
         userId: "user_1",

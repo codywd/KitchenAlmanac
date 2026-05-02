@@ -19,8 +19,16 @@ const routeState = vi.hoisted(() => ({
     };
   },
   listCalls: [] as unknown[],
+  providerConfigCalls: 0,
+  providerConfigError: null as Error | null,
+  providerMetadataCalls: 0,
   savedConfig: null as null | {
     apiKey: string;
+    baseUrl: string;
+    modelId: string;
+    providerKind: "ANTHROPIC_COMPATIBLE" | "OPENAI_COMPATIBLE";
+  },
+  savedMetadata: null as null | {
     baseUrl: string;
     modelId: string;
     providerKind: "ANTHROPIC_COMPATIBLE" | "OPENAI_COMPATIBLE";
@@ -47,7 +55,20 @@ vi.mock("@/lib/llm-provider", async () => {
 });
 
 vi.mock("@/lib/llm-settings", () => ({
-  getUserLlmProviderConfig: vi.fn(async () => routeState.savedConfig),
+  getUserLlmProviderConfig: vi.fn(async () => {
+    routeState.providerConfigCalls += 1;
+
+    if (routeState.providerConfigError) {
+      throw routeState.providerConfigError;
+    }
+
+    return routeState.savedConfig;
+  }),
+  getUserLlmProviderMetadata: vi.fn(async () => {
+    routeState.providerMetadataCalls += 1;
+
+    return routeState.savedMetadata;
+  }),
 }));
 
 vi.mock("@/lib/rate-limit", async () => {
@@ -96,7 +117,11 @@ describe("POST /api/llm/models", () => {
   beforeEach(() => {
     routeState.auth = null;
     routeState.listCalls = [];
+    routeState.providerConfigCalls = 0;
+    routeState.providerConfigError = null;
+    routeState.providerMetadataCalls = 0;
     routeState.savedConfig = null;
+    routeState.savedMetadata = null;
   });
 
   it("requires a signed-in user session", async () => {
@@ -133,6 +158,7 @@ describe("POST /api/llm/models", () => {
 
   it("uses a transient key to fetch provider model options", async () => {
     routeState.auth = sessionAuth();
+    routeState.providerConfigError = new Error("Could not decrypt");
 
     const response = await POST(
       request({
@@ -145,6 +171,30 @@ describe("POST /api/llm/models", () => {
 
     expect(response.status).toBe(200);
     expect(body.models).toEqual([{ id: "model_1", name: "Model 1" }]);
+    expect(routeState.providerConfigCalls).toBe(0);
+    expect(routeState.listCalls).toEqual([
+      expect.objectContaining({
+        apiKey: "sk-temp",
+        baseUrl: "https://proxy.example/v1",
+        providerKind: "OPENAI_COMPATIBLE",
+      }),
+    ]);
+  });
+
+  it("loads saved metadata without decrypting when replacement-key fields are missing", async () => {
+    routeState.auth = sessionAuth();
+    routeState.providerConfigError = new Error("Could not decrypt");
+    routeState.savedMetadata = {
+      baseUrl: "https://proxy.example/v1",
+      modelId: "model_1",
+      providerKind: "OPENAI_COMPATIBLE",
+    };
+
+    const response = await POST(request({ apiKey: "sk-temp" }));
+
+    expect(response.status).toBe(200);
+    expect(routeState.providerConfigCalls).toBe(0);
+    expect(routeState.providerMetadataCalls).toBe(1);
     expect(routeState.listCalls).toEqual([
       expect.objectContaining({
         apiKey: "sk-temp",
@@ -165,6 +215,8 @@ describe("POST /api/llm/models", () => {
 
     await POST(request({}));
 
+    expect(routeState.providerConfigCalls).toBe(1);
+    expect(routeState.providerMetadataCalls).toBe(0);
     expect(routeState.listCalls).toEqual([
       expect.objectContaining({
         apiKey: "sk-saved",

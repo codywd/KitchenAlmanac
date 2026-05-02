@@ -1,6 +1,9 @@
 import { authenticateRequest } from "@/lib/api-auth";
 import { badRequest, forbidden, json, unauthorized } from "@/lib/http";
-import { getUserLlmProviderConfig } from "@/lib/llm-settings";
+import {
+  getUserLlmProviderConfig,
+  getUserLlmProviderMetadata,
+} from "@/lib/llm-settings";
 import {
   listLlmModels,
   llmProviderKinds,
@@ -19,7 +22,10 @@ import { requestSecurityError } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 function isLlmProviderKind(value: unknown): value is LlmProviderKind {
-  return typeof value === "string" && llmProviderKinds.includes(value as LlmProviderKind);
+  return (
+    typeof value === "string" &&
+    llmProviderKinds.includes(value as LlmProviderKind)
+  );
 }
 
 export async function POST(request: Request) {
@@ -51,26 +57,41 @@ export async function POST(request: Request) {
       baseUrl?: unknown;
       providerKind?: unknown;
     };
-    const saved = await getUserLlmProviderConfig(auth.user.id);
-    const providerKind = isLlmProviderKind(body.providerKind)
+    const submittedApiKey =
+      typeof body.apiKey === "string" && body.apiKey.trim()
+        ? body.apiKey.trim()
+        : null;
+    const submittedBaseUrl =
+      typeof body.baseUrl === "string" && body.baseUrl.trim()
+        ? body.baseUrl.trim()
+        : null;
+    const submittedProviderKind = isLlmProviderKind(body.providerKind)
       ? body.providerKind
-      : saved?.providerKind;
+      : null;
+    const savedConfig = submittedApiKey
+      ? null
+      : await getUserLlmProviderConfig(auth.user.id);
+    const savedMetadata =
+      submittedApiKey && (!submittedProviderKind || !submittedBaseUrl)
+        ? await getUserLlmProviderMetadata(auth.user.id)
+        : null;
+    const providerKind =
+      submittedProviderKind ??
+      savedConfig?.providerKind ??
+      savedMetadata?.providerKind;
 
     if (!providerKind) {
       return badRequest(new Error("Choose an LLM provider first."));
     }
 
-    const apiKey =
-      typeof body.apiKey === "string" && body.apiKey.trim()
-        ? body.apiKey.trim()
-        : saved?.apiKey;
+    const apiKey = submittedApiKey ?? savedConfig?.apiKey;
 
     if (!apiKey) {
       return badRequest(new Error("Enter an API key or save LLM settings first."));
     }
 
     const baseUrl = normalizeLlmBaseUrl(
-      typeof body.baseUrl === "string" ? body.baseUrl : saved?.baseUrl,
+      submittedBaseUrl ?? savedConfig?.baseUrl ?? savedMetadata?.baseUrl,
       providerKind,
     );
     const models = await listLlmModels({
