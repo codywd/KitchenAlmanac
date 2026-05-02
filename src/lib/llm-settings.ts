@@ -32,6 +32,12 @@ export type SafeUserLlmSettings = {
   updatedAt: string;
 };
 
+export type UserLlmProviderMetadata = {
+  baseUrl: string;
+  modelId: string;
+  providerKind: LlmProviderKind;
+};
+
 function encryptedPayload(settings: StoredUserLlmSettings): LlmCredentialCiphertext {
   return {
     ciphertext: settings.apiKeyCiphertext,
@@ -68,6 +74,23 @@ export async function getUserLlmSettingsForDisplay(userId: string) {
   });
 
   return toSafeUserLlmSettings(settings as StoredUserLlmSettings | null);
+}
+
+export async function getUserLlmProviderMetadata(
+  userId: string,
+): Promise<UserLlmProviderMetadata | null> {
+  const settings = (await getDb().userLlmSettings.findUnique({
+    select: {
+      baseUrl: true,
+      modelId: true,
+      providerKind: true,
+    },
+    where: {
+      userId,
+    },
+  })) as UserLlmProviderMetadata | null;
+
+  return settings;
 }
 
 export async function getUserLlmProviderConfig(userId: string) {

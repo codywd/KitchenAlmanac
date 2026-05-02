@@ -19,12 +19,14 @@ import { requireFamilyContext } from "@/lib/family";
 import { toSafeUserLlmSettings, type SafeUserLlmSettings } from "@/lib/llm-settings";
 
 export type LlmSettingsActionState = {
+  completedAt?: string;
   error?: string;
   message?: string;
   settings?: SafeUserLlmSettings | null;
 };
 
 export type DeleteLlmSettingsActionState = {
+  completedAt?: string;
   message?: string;
 };
 
@@ -164,6 +166,7 @@ export async function saveLlmSettingsAction(
   revalidatePath("/account");
 
   return {
+    completedAt: now.toISOString(),
     message: "LLM settings saved.",
     settings: toSafeUserLlmSettings(settings),
   };
@@ -183,5 +186,8 @@ export async function deleteLlmSettingsAction(
 
   revalidatePath("/account");
 
-  return { message: "LLM settings deleted." };
+  return {
+    completedAt: new Date().toISOString(),
+    message: "LLM settings deleted.",
+  };
 }

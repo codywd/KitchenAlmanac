@@ -14,6 +14,7 @@ import {
   type LlmModelOption,
   type LlmProviderKind,
 } from "@/lib/llm-provider";
+import { visibleLlmSettings } from "@/lib/llm-settings-form-state";
 import type { SafeUserLlmSettings } from "@/lib/llm-settings";
 
 const initialState: LlmSettingsActionState = {};
@@ -37,7 +38,13 @@ export function LlmSettingsForm({
     deleteLlmSettingsAction,
     initialDeleteState,
   );
-  const effectiveSettings = state.settings ?? settings;
+  const effectiveSettings = visibleLlmSettings({
+    actionSettings: state.settings,
+    deleteCompletedAt: deleteState.completedAt,
+    deletePending,
+    savedSettings: settings,
+    saveCompletedAt: state.completedAt,
+  });
   const [providerKind, setProviderKind] = useState<LlmProviderKind>(
     effectiveSettings?.providerKind ?? "OPENAI_COMPATIBLE",
   );
@@ -56,6 +63,7 @@ export function LlmSettingsForm({
   );
   const [modelError, setModelError] = useState("");
   const [modelLoading, setModelLoading] = useState(false);
+
   const modelOptions = useMemo(() => {
     if (!modelId || models.some((model) => model.id === modelId)) {
       return models;
