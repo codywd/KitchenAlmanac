@@ -13,6 +13,8 @@ export const rateLimitPolicies = {
   apiKey: { blockMs: 60 * 1000, limit: 120, windowMs: 60 * 1000 },
   importPlan: { blockMs: 10 * 60 * 1000, limit: 10, windowMs: 10 * 60 * 1000 },
   login: { blockMs: 15 * 60 * 1000, limit: 5, windowMs: 15 * 60 * 1000 },
+  llmChat: { blockMs: 10 * 60 * 1000, limit: 30, windowMs: 10 * 60 * 1000 },
+  llmModelList: { blockMs: 60 * 1000, limit: 20, windowMs: 60 * 1000 },
   planningWrite: { blockMs: 10 * 60 * 1000, limit: 20, windowMs: 10 * 60 * 1000 },
   shoppingWrite: { blockMs: 60 * 1000, limit: 120, windowMs: 60 * 1000 },
 } satisfies Record<string, RateLimitPolicy>;

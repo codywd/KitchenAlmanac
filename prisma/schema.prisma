@@ -52,6 +52,11 @@ enum PlanningSessionStatus {
   IMPORTED
 }
 
+enum LlmProviderKind {
+  OPENAI_COMPATIBLE
+  ANTHROPIC_COMPATIBLE
+}
+
 model User {
   id                       String              @id @default(cuid())
   email                    String              @unique
@@ -72,6 +77,7 @@ model User {
   deactivatedPantryStaples PantryStaple[]      @relation("PantryStapleDeactivator")
   archivedSavedRecipes     SavedRecipe[]       @relation("SavedRecipeArchiver")
   closedOutMeals           Meal[]              @relation("MealCloseoutUser")
+  llmSettings              UserLlmSettings?
   mealVotes                MealVote[]
   updatedSavedRecipes      SavedRecipe[]       @relation("SavedRecipeUpdater")
   updatedShoppingItems     ShoppingItemState[] @relation("ShoppingItemUpdater")
@@ -440,4 +446,25 @@ model RateLimitBucket {
   @@index([scope, subject])
   @@index([windowExpiresAt])
   @@index([blockedUntil])
+}
+
+model UserLlmSettings {
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  providerKind     LlmProviderKind
+  displayName      String?
+  baseUrl          String
+  modelId          String
+  apiKeyCiphertext String
+  apiKeyIv         String
+  apiKeyTag        String
+  keyFingerprint   String
+  lastVerifiedAt   DateTime?
+  lastUsedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([providerKind])
+  @@index([lastUsedAt])
 }

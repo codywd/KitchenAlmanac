@@ -1,13 +1,16 @@
 import { AppShell } from "@/components/app-shell";
+import { LlmSettingsForm } from "@/components/llm-settings-form";
 import { PageIntro } from "@/components/page-intro";
 import { PasswordChangeForm } from "@/components/password-change-form";
 import { Section } from "@/components/section";
 import { requireFamilyContext } from "@/lib/family";
+import { getUserLlmSettingsForDisplay } from "@/lib/llm-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
   const context = await requireFamilyContext("/account");
+  const llmSettings = await getUserLlmSettingsForDisplay(context.user.id);
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -34,6 +37,13 @@ export default async function AccountPage() {
           title="Password"
         >
           <PasswordChangeForm />
+        </Section>
+
+        <Section
+          description="Stored per user; not shared with the household."
+          title="LLM Provider"
+        >
+          <LlmSettingsForm settings={llmSettings} />
         </Section>
       </div>
     </AppShell>

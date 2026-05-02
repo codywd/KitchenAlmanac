@@ -21,9 +21,11 @@ import { CookSteps } from "@/components/cook-steps";
 import { AppShell } from "@/components/app-shell";
 import { MealServingsForm } from "@/components/meal-servings-form";
 import { MealVotePanel } from "@/components/meal-vote-panel";
+import { RecipeChatBox } from "@/components/recipe-chat-box";
 import { buildCookViewModel } from "@/lib/cook-view";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import { getUserLlmSettingsForDisplay } from "@/lib/llm-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,7 @@ export default async function CookPage({
   const { mealId } = await params;
   const context = await requireFamilyContext(`/cook/${mealId}`);
   const canManage = canManagePlans(context.role);
+  const llmSettings = await getUserLlmSettingsForDisplay(context.user.id);
   const meal = await getDb().meal.findFirst({
     include: {
       dayPlan: {
@@ -297,6 +300,12 @@ export default async function CookPage({
                   currentUserId={context.user.id}
                   mealId={meal.id}
                   votes={meal.votes}
+                />
+
+                <RecipeChatBox
+                  enabled={Boolean(llmSettings)}
+                  mealId={meal.id}
+                  modelLabel={llmSettings?.modelId}
                 />
 
                 {canManage ? (
