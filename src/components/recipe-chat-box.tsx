@@ -4,6 +4,8 @@ import { Bot, Send, UserRound } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 
+import { MarkdownMessage } from "./markdown-message";
+
 type ChatMessage = {
   content: string;
   role: "assistant" | "user";
@@ -121,13 +123,17 @@ export function RecipeChatBox({
                     <Bot className="mt-2 shrink-0 text-[var(--herb)]" size={16} />
                   ) : null}
                   <div
-                    className={`max-w-[88%] whitespace-pre-wrap border px-3 py-2 text-sm font-semibold leading-6 ${
+                    className={`max-w-[88%] border px-3 py-2 ${
                       message.role === "user"
-                        ? "border-[var(--tomato)] bg-[rgba(209,91,62,0.1)] text-[var(--ink)]"
+                        ? "whitespace-pre-wrap border-[var(--tomato)] bg-[rgba(209,91,62,0.1)] text-sm font-semibold leading-6 text-[var(--ink)]"
                         : "border-[var(--line)] bg-[rgba(255,253,245,0.54)] text-[var(--muted-ink)]"
                     }`}
                   >
-                    {message.content}
+                    {message.role === "assistant" ? (
+                      <MarkdownMessage content={message.content} />
+                    ) : (
+                      message.content
+                    )}
                   </div>
                   {message.role === "user" ? (
                     <UserRound className="mt-2 shrink-0 text-[var(--tomato)]" size={16} />
