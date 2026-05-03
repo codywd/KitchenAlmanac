@@ -579,53 +579,6 @@ function documentSection(documents: PlanningBriefHouseholdDocument[]) {
   ].join("\n\n");
 }
 
-function outputContract() {
-  return [
-    "## Requested Output",
-    "Create one dinner plan for each date in the target week. Return only JSON that this app can import at `/import` or `POST /api/import/meal-plan`.",
-    "Required top-level shape:",
-    "```json",
-    JSON.stringify(
-      {
-        input_summary: {
-          assumptions: [],
-          budget_target_usd: 0,
-          constraints: [],
-          family_size: 0,
-        },
-        recipes: [
-          {
-            day: "Monday",
-            dinner_title: "Recipe name",
-            estimated_cost_usd: 0,
-            ingredients: [],
-            instructions: [],
-            servings: 7,
-            tags: [],
-            time: {
-              prep_minutes: 0,
-              total_minutes: 0,
-            },
-            why_this_works: "",
-          },
-        ],
-        schema_version: "1.0",
-        shopping_list: {},
-        weekly_overview: {
-          budget_status: "",
-          coordination_strategy: [],
-          estimated_total_grocery_cost_usd: 0,
-          prep_ahead: [],
-          theme: "",
-        },
-      },
-      null,
-      2,
-    ),
-    "```",
-  ].join("\n\n");
-}
-
 export function buildPlanningBriefMarkdown(input: PlanningBriefInput) {
   const weekStart = toDateOnly(input.weekStart);
   const weekEnd = toDateOnly(addDays(input.weekStart, 6));
@@ -640,7 +593,6 @@ export function buildPlanningBriefMarkdown(input: PlanningBriefInput) {
     `Budget target: ${budget}`,
     `Generated at: ${input.generatedAt}`,
     "Use this source material directly. Favor meals that fit the household guidance, respond to votes and comments, avoid active rejections, and do not repeat recent meals too closely.",
-    outputContract(),
     listSection(
       "Family Members",
       input.context.familyMembers,

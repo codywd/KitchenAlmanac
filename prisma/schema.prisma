@@ -186,6 +186,7 @@ model PlanningSession {
   weekStart         DateTime
   budgetTargetCents Int?
   localNotes        String?
+  selectedMealIdeas String?
   promptMarkdown    String
   planJsonText      String?
   status            PlanningSessionStatus @default(DRAFT)
