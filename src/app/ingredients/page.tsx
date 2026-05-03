@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { GroceryRefreshForm } from "@/components/grocery-refresh-form";
 import { PageIntro } from "@/components/page-intro";
 import { Section } from "@/components/section";
+import { SmartGroceryMergeForm } from "@/components/smart-grocery-merge-form";
 import {
   addDays,
   formatDisplayDate,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/grocery-reconciliation";
 import { aggregateIngredientsForWeek } from "@/lib/ingredients";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import { buildSmartGrocerySuggestions } from "@/lib/smart-grocery";
 
 export const dynamic = "force-dynamic";
 
@@ -135,40 +137,53 @@ export default async function IngredientsPage({
 }) {
   const context = await requireFamilyContext("/ingredients");
   const params = await searchParams;
-  const weeks = await getDb().week.findMany({
-    include: {
-      days: {
-        include: {
-          dinner: true,
+  const [weeks, pantryStaples, shoppingItemStates] = await Promise.all([
+    getDb().week.findMany({
+      include: {
+        days: {
+          include: {
+            dinner: true,
+          },
+          orderBy: {
+            date: "asc",
+          },
         },
-        orderBy: {
-          date: "asc",
-        },
+        groceryList: true,
       },
-      groceryList: true,
-    },
-    orderBy: {
-      weekStart: "desc",
-    },
-    where: {
-      familyId: context.family.id,
-    },
-  });
+      orderBy: {
+        weekStart: "desc",
+      },
+      where: {
+        familyId: context.family.id,
+      },
+    }),
+    getDb().pantryStaple.findMany({
+      orderBy: {
+        displayName: "asc",
+      },
+      select: {
+        active: true,
+        canonicalName: true,
+        displayName: true,
+      },
+      where: {
+        active: true,
+        familyId: context.family.id,
+      },
+    }),
+    getDb().shoppingItemState.findMany({
+      select: {
+        canonicalName: true,
+        itemName: true,
+        quantity: true,
+        status: true,
+      },
+      where: {
+        familyId: context.family.id,
+      },
+    }),
+  ]);
   const currentWeekStart = startOfMealPlanWeek();
-  const pantryStaples = await getDb().pantryStaple.findMany({
-    orderBy: {
-      displayName: "asc",
-    },
-    select: {
-      active: true,
-      canonicalName: true,
-      displayName: true,
-    },
-    where: {
-      active: true,
-      familyId: context.family.id,
-    },
-  });
   const selectedWeek =
     weeks.find((week) => week.id === params.weekId) ??
     weeks.find((week) => toDateOnly(week.weekStart) === toDateOnly(currentWeekStart)) ??
@@ -202,6 +217,18 @@ export default async function IngredientsPage({
     : null;
   const derivedGroceryItemCount = countGroceryItems(derivedGrocerySections);
   const canRefreshGroceryList = canManagePlans(context.role);
+  const smartGrocerySuggestions = selectedWeek
+    ? buildSmartGrocerySuggestions({
+        derivedSections: derivedGrocerySections,
+        pantryStaples,
+        recentGrocerySections: weeks
+          .filter((week) => week.id !== selectedWeek.id)
+          .slice(0, 8)
+          .map((week) => readGrocerySections(week.groceryList?.sections)),
+        shoppingItemStates,
+        storedSections: storedGrocerySections,
+      })
+    : null;
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -299,6 +326,15 @@ export default async function IngredientsPage({
                       <GrocerySectionPreview sections={derivedGrocerySections} />
                     </div>
                   </div>
+
+                  {canRefreshGroceryList && smartGrocerySuggestions ? (
+                    <div className="mt-6 border-t border-[var(--line)] pt-5">
+                      <SmartGroceryMergeForm
+                        suggestions={smartGrocerySuggestions}
+                        weekId={selectedWeek.id}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </Section>
             ) : null}
