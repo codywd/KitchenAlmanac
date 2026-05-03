@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMealIdeaPrompt,
   buildPlanningSessionPrompt,
+  getPlanningSessionImportGate,
   normalizePlanningJsonText,
   planningJsonTextsMatch,
 } from "./planning-session";
@@ -72,5 +73,52 @@ describe("planning session JSON matching", () => {
 
     expect(normalizePlanningJsonText(textareaText)).toBe(savedText);
     expect(planningJsonTextsMatch(savedText, textareaText)).toBe(true);
+  });
+});
+
+describe("planning session import gate", () => {
+  it("allows a saved returned plan to be imported before client preview exists", () => {
+    const gate = getPlanningSessionImportGate({
+      currentPlanJsonText: '{"recipes":[{"dinner_title":"Turkey Bowls"}]}',
+      reviewCanImport: null,
+      reviewStale: false,
+      session: {
+        id: "session_1",
+        planJsonText: '{"recipes":[{"dinner_title":"Turkey Bowls"}]}',
+      },
+    });
+
+    expect(gate.canImport).toBe(true);
+    expect(gate.hasUnsavedPlanChanges).toBe(false);
+  });
+
+  it("blocks import when the textarea has unsaved plan changes", () => {
+    const gate = getPlanningSessionImportGate({
+      currentPlanJsonText: '{"recipes":[{"dinner_title":"Turkey Tacos"}]}',
+      reviewCanImport: true,
+      reviewStale: false,
+      session: {
+        id: "session_1",
+        planJsonText: '{"recipes":[{"dinner_title":"Turkey Bowls"}]}',
+      },
+    });
+
+    expect(gate.canImport).toBe(false);
+    expect(gate.hasUnsavedPlanChanges).toBe(true);
+  });
+
+  it("blocks import when the current client review has blockers", () => {
+    const gate = getPlanningSessionImportGate({
+      currentPlanJsonText: '{"recipes":[{"dinner_title":"Turkey Bowls"}]}',
+      reviewCanImport: false,
+      reviewStale: false,
+      session: {
+        id: "session_1",
+        planJsonText: '{"recipes":[{"dinner_title":"Turkey Bowls"}]}',
+      },
+    });
+
+    expect(gate.canImport).toBe(false);
+    expect(gate.currentReviewBlocksImport).toBe(true);
   });
 });

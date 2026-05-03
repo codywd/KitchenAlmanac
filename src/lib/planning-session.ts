@@ -144,6 +144,44 @@ export function planningJsonTextsMatch(
   return Boolean(normalizedLeft) && normalizedLeft === normalizedRight;
 }
 
+export function getPlanningSessionImportGate({
+  currentPlanJsonText,
+  reviewCanImport,
+  reviewStale,
+  session,
+}: {
+  currentPlanJsonText: string;
+  reviewCanImport: boolean | null;
+  reviewStale: boolean;
+  session:
+    | {
+        id: string | null | undefined;
+        planJsonText: string | null | undefined;
+      }
+    | null
+    | undefined;
+}) {
+  const hasSavedPlan = Boolean(session?.id && session.planJsonText?.trim());
+  const hasCurrentPlanText = Boolean(currentPlanJsonText.trim());
+  const hasUnsavedPlanChanges =
+    hasSavedPlan &&
+    hasCurrentPlanText &&
+    !planningJsonTextsMatch(session?.planJsonText, currentPlanJsonText);
+  const currentReviewBlocksImport =
+    hasSavedPlan &&
+    !hasUnsavedPlanChanges &&
+    !reviewStale &&
+    reviewCanImport === false;
+
+  return {
+    canImport:
+      hasSavedPlan && !hasUnsavedPlanChanges && !currentReviewBlocksImport,
+    currentReviewBlocksImport,
+    hasSavedPlan,
+    hasUnsavedPlanChanges,
+  };
+}
+
 export function toPlanningSessionView(
   session: PlanningSessionLike,
 ): PlanningSessionView {
