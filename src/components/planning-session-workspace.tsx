@@ -20,8 +20,8 @@ import { parseJsonWithRepair } from "@/lib/json-repair";
 import {
   buildMealIdeaPrompt,
   buildPlanningSessionPrompt,
+  getPlanningSessionImportGate,
   normalizePlanningJsonText,
-  planningJsonTextsMatch,
   type PlanningSessionView,
 } from "@/lib/planning-session";
 
@@ -134,15 +134,20 @@ export function PlanningSessionWorkspace({
     importState.session ?? planState.session ?? promptState.session ?? initialSession;
   const reviewKey = `${weekStart}\n${normalizePlanningJsonText(planJsonText)}`;
   const reviewStale = Boolean(review) && reviewedKey !== reviewKey;
-  const savedPlanMatches =
-    Boolean(currentSession?.planJsonText.trim()) &&
-    planningJsonTextsMatch(currentSession?.planJsonText, planJsonText);
+  const importGate = getPlanningSessionImportGate({
+    currentPlanJsonText: planJsonText,
+    reviewCanImport: review?.canImport ?? null,
+    reviewStale,
+    session: currentSession
+      ? {
+          id: currentSession.id,
+          planJsonText: currentSession.planJsonText,
+        }
+      : null,
+  });
   const canImport =
-    Boolean(currentSession?.id) &&
-    Boolean(review) &&
-    !reviewStale &&
-    Boolean(review?.canImport) &&
-    savedPlanMatches;
+    !importPending &&
+    importGate.canImport;
   const importedWeekId =
     importState.weekId ??
     importState.session?.importedWeekId ??
@@ -405,7 +410,7 @@ export function PlanningSessionWorkspace({
           Preview again before importing; the returned JSON changed.
         </div>
       ) : null}
-      {review && !savedPlanMatches ? (
+      {importGate.hasUnsavedPlanChanges ? (
         <div className="ka-note text-sm">
           Save the returned JSON before importing this reviewed plan.
         </div>
@@ -418,7 +423,7 @@ export function PlanningSessionWorkspace({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             className="ka-button gap-2 disabled:opacity-60"
-            disabled={importPending || !canImport}
+            disabled={!canImport}
             type="submit"
           >
             <Upload size={16} />
