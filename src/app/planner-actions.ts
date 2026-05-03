@@ -57,6 +57,7 @@ function readSessionFields(formData: FormData) {
   );
   const localNotes = readText(formData, "localNotes").trim();
   const promptMarkdown = readText(formData, "promptMarkdown");
+  const selectedMealIdeas = readText(formData, "selectedMealIdeas").trim();
 
   if (!promptMarkdown.trim()) {
     throw new Error("Generate the planning prompt before saving the session.");
@@ -66,6 +67,7 @@ function readSessionFields(formData: FormData) {
     budgetTargetCents,
     localNotes,
     promptMarkdown,
+    selectedMealIdeas,
     weekStart,
   };
 }
@@ -122,6 +124,7 @@ export async function savePlanningSessionPromptAction(
         localNotes: fields.localNotes,
         planJsonText: null,
         promptMarkdown: fields.promptMarkdown,
+        selectedMealIdeas: fields.selectedMealIdeas,
         status: "DRAFT",
       },
       where: {
@@ -189,6 +192,7 @@ export async function savePlanningSessionPlanAction(
         localNotes: fields.localNotes,
         planJsonText,
         promptMarkdown: fields.promptMarkdown,
+        selectedMealIdeas: fields.selectedMealIdeas,
         status: "PLAN_PASTED",
       },
       where: {

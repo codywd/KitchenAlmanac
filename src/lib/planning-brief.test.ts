@@ -166,6 +166,7 @@ describe("planning brief formatting", () => {
     );
     expect(response.briefMarkdown).toContain("Week 2026-04-20 (Estimated total: $312.00): Produce 2 items");
     expect(response.briefMarkdown).toContain("brown rice: 5 cup; used by Turkey Bowls, Quesadillas.");
-    expect(response.briefMarkdown).toContain("POST /api/import/meal-plan");
+    expect(response.briefMarkdown).not.toContain("## Requested Output");
+    expect(response.briefMarkdown).not.toContain("POST /api/import/meal-plan");
   });
 });

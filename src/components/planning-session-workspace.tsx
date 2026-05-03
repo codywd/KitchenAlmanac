@@ -18,7 +18,10 @@ import {
 } from "@/lib/import-review";
 import { parseJsonWithRepair } from "@/lib/json-repair";
 import {
+  buildMealIdeaPrompt,
   buildPlanningSessionPrompt,
+  normalizePlanningJsonText,
+  planningJsonTextsMatch,
   type PlanningSessionView,
 } from "@/lib/planning-session";
 
@@ -40,11 +43,13 @@ function HiddenSessionFields({
   budgetTargetCents,
   localNotes,
   promptMarkdown,
+  selectedMealIdeas,
   weekStart,
 }: {
   budgetTargetCents: number | null;
   localNotes: string;
   promptMarkdown: string;
+  selectedMealIdeas: string;
   weekStart: string;
 }) {
   return (
@@ -56,6 +61,7 @@ function HiddenSessionFields({
         value={budgetTargetCents ?? ""}
       />
       <input name="localNotes" type="hidden" value={localNotes} />
+      <input name="selectedMealIdeas" type="hidden" value={selectedMealIdeas} />
       <textarea hidden name="promptMarkdown" readOnly value={promptMarkdown} />
     </>
   );
@@ -79,12 +85,18 @@ export function PlanningSessionWorkspace({
   weekStart: string;
 }) {
   const [localNotes, setLocalNotes] = useState(initialSession?.localNotes ?? "");
+  const [selectedMealIdeas, setSelectedMealIdeas] = useState(
+    initialSession?.selectedMealIdeas ?? "",
+  );
   const [planJsonText, setPlanJsonText] = useState(
     initialSession?.planJsonText ?? "",
   );
-  const [copyStatus, setCopyStatus] = useState<"copied" | "idle" | "selected">(
-    "idle",
-  );
+  const [ideaCopyStatus, setIdeaCopyStatus] = useState<
+    "copied" | "idle" | "selected"
+  >("idle");
+  const [recipeCopyStatus, setRecipeCopyStatus] = useState<
+    "copied" | "idle" | "selected"
+  >("idle");
   const [copyError, setCopyError] = useState<string | null>(null);
   const [review, setReview] = useState<ImportReview | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
@@ -101,21 +113,30 @@ export function PlanningSessionWorkspace({
     importPlanningSessionAction,
     initialActionState,
   );
-  const promptMarkdown = useMemo(
+  const ideaPromptMarkdown = useMemo(
     () =>
-      buildPlanningSessionPrompt({
+      buildMealIdeaPrompt({
         briefMarkdown,
         localNotes,
       }),
     [briefMarkdown, localNotes],
   );
+  const recipePromptMarkdown = useMemo(
+    () =>
+      buildPlanningSessionPrompt({
+        briefMarkdown,
+        localNotes,
+        selectedMealIdeas,
+      }),
+    [briefMarkdown, localNotes, selectedMealIdeas],
+  );
   const currentSession =
     importState.session ?? planState.session ?? promptState.session ?? initialSession;
-  const reviewKey = `${weekStart}\n${planJsonText}`;
+  const reviewKey = `${weekStart}\n${normalizePlanningJsonText(planJsonText)}`;
   const reviewStale = Boolean(review) && reviewedKey !== reviewKey;
   const savedPlanMatches =
     Boolean(currentSession?.planJsonText.trim()) &&
-    currentSession?.planJsonText.trim() === planJsonText.trim();
+    planningJsonTextsMatch(currentSession?.planJsonText, planJsonText);
   const canImport =
     Boolean(currentSession?.id) &&
     Boolean(review) &&
@@ -152,22 +173,28 @@ export function PlanningSessionWorkspace({
     }
   }
 
-  async function copyPrompt() {
+  async function copyPrompt({
+    setStatus,
+    value,
+  }: {
+    setStatus: (status: "copied" | "idle" | "selected") => void;
+    value: string;
+  }) {
     try {
-      const copied = await writeClipboardText(promptMarkdown);
+      const copied = await writeClipboardText(value);
 
       if (!copied) {
-        setCopyStatus("selected");
+        setStatus("selected");
         setCopyError("Clipboard was blocked, so select and copy the prompt below.");
 
         return;
       }
 
-      setCopyStatus("copied");
+      setStatus("copied");
       setCopyError(null);
-      window.setTimeout(() => setCopyStatus("idle"), 1800);
+      window.setTimeout(() => setStatus("idle"), 1800);
     } catch {
-      setCopyStatus("selected");
+      setStatus("selected");
       setCopyError("Clipboard was blocked, so select and copy the prompt below.");
     }
   }
@@ -183,7 +210,7 @@ export function PlanningSessionWorkspace({
         weekStart: new Date(`${weekStart}T00:00:00.000Z`),
       });
 
-      if (parsed.repaired) {
+      if (nextPlanJsonText !== planJsonText) {
         setPlanJsonText(nextPlanJsonText);
       }
 
@@ -222,11 +249,12 @@ export function PlanningSessionWorkspace({
         </div>
       </div>
 
-      <form action={savePromptAction} className="space-y-4">
+      <form action={savePromptAction} className="space-y-5">
         <HiddenSessionFields
           budgetTargetCents={budgetTargetCents}
           localNotes={localNotes}
-          promptMarkdown={promptMarkdown}
+          promptMarkdown={recipePromptMarkdown}
+          selectedMealIdeas={selectedMealIdeas}
           weekStart={weekStart}
         />
         <label className="block">
@@ -239,16 +267,78 @@ export function PlanningSessionWorkspace({
             value={localNotes}
           />
         </label>
+
+        <div className="space-y-3 border-t border-[var(--line)] pt-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="ka-label">Phase 1: idea prompt</span>
+            <button
+              className="ka-button-secondary gap-2 disabled:opacity-60"
+              onClick={() =>
+                void copyPrompt({
+                  setStatus: setIdeaCopyStatus,
+                  value: ideaPromptMarkdown,
+                })
+              }
+              type="button"
+            >
+              {ideaCopyStatus === "copied" ? (
+                <Check size={16} />
+              ) : (
+                <ClipboardCopy size={16} />
+              )}
+              {ideaCopyStatus === "copied" ? "Copied" : "Copy idea prompt"}
+            </button>
+          </div>
+          <textarea
+            className="ka-textarea min-h-[20rem] font-mono text-xs leading-5"
+            readOnly
+            value={ideaPromptMarkdown}
+          />
+        </div>
+
+        <label className="block border-t border-[var(--line)] pt-5">
+          <span className="ka-label">Selected meal ideas</span>
+          <textarea
+            className="ka-textarea mt-1 min-h-32 text-sm leading-6"
+            name="visibleSelectedMealIdeas"
+            onChange={(event) => setSelectedMealIdeas(event.target.value)}
+            placeholder="Paste or edit the meal names and overviews you want turned into recipes."
+            value={selectedMealIdeas}
+          />
+        </label>
+
+        <div className="space-y-3 border-t border-[var(--line)] pt-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="ka-label">Phase 2: recipe JSON prompt</span>
+            <button
+              className="ka-button gap-2 disabled:opacity-60"
+              disabled={promptPending}
+              onClick={() =>
+                void copyPrompt({
+                  setStatus: setRecipeCopyStatus,
+                  value: recipePromptMarkdown,
+                })
+              }
+              type="submit"
+            >
+              {recipeCopyStatus === "copied" ? (
+                <Check size={16} />
+              ) : (
+                <ClipboardCopy size={16} />
+              )}
+              {recipeCopyStatus === "copied"
+                ? "Copied and saved"
+                : "Save and copy recipe prompt"}
+            </button>
+          </div>
+          <textarea
+            className="ka-textarea min-h-[26rem] font-mono text-xs leading-5"
+            readOnly
+            value={recipePromptMarkdown}
+          />
+        </div>
+
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <button
-            className="ka-button gap-2 disabled:opacity-60"
-            disabled={promptPending}
-            onClick={() => void copyPrompt()}
-            type="submit"
-          >
-            {copyStatus === "copied" ? <Check size={16} /> : <ClipboardCopy size={16} />}
-            {copyStatus === "copied" ? "Copied and saved" : "Save and copy prompt"}
-          </button>
           {promptState.message ? (
             <span className="ka-success text-sm">{promptState.message}</span>
           ) : null}
@@ -261,21 +351,14 @@ export function PlanningSessionWorkspace({
             {copyError}
           </p>
         ) : null}
-        <label className="block">
-          <span className="ka-label">ChatGPT prompt</span>
-          <textarea
-            className="ka-textarea mt-1 min-h-[26rem] font-mono text-xs leading-5"
-            readOnly
-            value={promptMarkdown}
-          />
-        </label>
       </form>
 
       <form action={savePlanAction} className="space-y-4 border-t border-[var(--line)] pt-6">
         <HiddenSessionFields
           budgetTargetCents={budgetTargetCents}
           localNotes={localNotes}
-          promptMarkdown={promptMarkdown}
+          promptMarkdown={recipePromptMarkdown}
+          selectedMealIdeas={selectedMealIdeas}
           weekStart={weekStart}
         />
         <label className="block">

@@ -130,8 +130,8 @@ export default async function PlannerPage({
           eyebrow="Planning brief"
           title="Next Week Builder"
         >
-          Save a family-scoped planning session, copy the ChatGPT prompt, then
-          review and import the returned weekly JSON.
+          Brainstorm meal ideas, narrow the list, then copy a recipe prompt for
+          the returned weekly JSON.
         </PageIntro>
 
         {parseError ? (
@@ -210,7 +210,7 @@ export default async function PlannerPage({
         </div>
 
         <Section
-          description="The saved session keeps the exact copied prompt and returned JSON so the manual ChatGPT handoff can survive page reloads."
+          description="The saved session keeps narrowed meal ideas, the exact recipe prompt, and returned JSON so the manual ChatGPT handoff can survive page reloads."
           title="Planning Session"
         >
           <PlanningSessionWorkspace

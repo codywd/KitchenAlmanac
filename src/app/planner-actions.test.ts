@@ -95,6 +95,7 @@ function makeSession(
     localNotes: string | null;
     planJsonText: string | null;
     promptMarkdown: string;
+    selectedMealIdeas: string | null;
     status: "DRAFT" | "IMPORTED" | "PLAN_PASTED";
   }> = {},
 ) {
@@ -106,6 +107,8 @@ function makeSession(
     localNotes: "Keep Tuesday easy.",
     planJsonText: null,
     promptMarkdown: "## Local Notes\n\nKeep Tuesday easy.\n\n# Meal Planning Brief",
+    selectedMealIdeas:
+      "Monday - Turkey Rice Bowls: familiar, cheap, and good for leftovers.",
     status: "DRAFT" as const,
     updatedAt: new Date("2026-05-01T12:05:00.000Z"),
     weekStart: new Date("2026-05-04T00:00:00.000Z"),
@@ -163,6 +166,8 @@ describe("planning session actions", () => {
     const promptMarkdown = buildPlanningSessionPrompt({
       briefMarkdown: "# Meal Planning Brief",
       localNotes: "Keep Tuesday easy.",
+      selectedMealIdeas:
+        "Monday - Turkey Rice Bowls: familiar, cheap, and good for leftovers.",
     });
 
     const result = await savePlanningSessionPromptAction(
@@ -171,6 +176,8 @@ describe("planning session actions", () => {
         budgetTargetCents: "35000",
         localNotes: "Keep Tuesday easy.",
         promptMarkdown,
+        selectedMealIdeas:
+          "Monday - Turkey Rice Bowls: familiar, cheap, and good for leftovers.",
         weekStart: "2026-05-04",
       }),
     );
@@ -182,6 +189,8 @@ describe("planning session actions", () => {
           localNotes: "Keep Tuesday easy.",
           planJsonText: null,
           promptMarkdown: expect.stringContaining("## Local Notes"),
+          selectedMealIdeas:
+            "Monday - Turkey Rice Bowls: familiar, cheap, and good for leftovers.",
           status: "DRAFT",
         }),
         update: expect.objectContaining({
@@ -189,6 +198,8 @@ describe("planning session actions", () => {
           localNotes: "Keep Tuesday easy.",
           planJsonText: null,
           promptMarkdown: expect.stringContaining("Keep Tuesday easy."),
+          selectedMealIdeas:
+            "Monday - Turkey Rice Bowls: familiar, cheap, and good for leftovers.",
           status: "DRAFT",
         }),
       }),
