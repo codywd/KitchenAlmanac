@@ -19,13 +19,18 @@ import { recordFeedbackAction } from "@/app/meal-actions";
 import { CookIngredientChecklist } from "@/components/cook-ingredient-checklist";
 import { CookSteps } from "@/components/cook-steps";
 import { AppShell } from "@/components/app-shell";
+import { MealOutcomeForm } from "@/components/meal-outcome-form";
 import { MealServingsForm } from "@/components/meal-servings-form";
 import { MealVotePanel } from "@/components/meal-vote-panel";
 import { RecipeChatBox } from "@/components/recipe-chat-box";
+import { SaveRecipeButton } from "@/components/save-recipe-button";
+import { StepByStepCookMode } from "@/components/step-by-step-cook-mode";
 import { buildCookViewModel } from "@/lib/cook-view";
+import { cookStepHref } from "@/lib/cook-step-mode";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
 import { getUserLlmSettingsForDisplay } from "@/lib/llm-settings";
+import { closeoutMealHref } from "@/lib/quick-closeout";
 import {
   firstRouteParam,
   routeWithParams,
@@ -36,6 +41,8 @@ export const dynamic = "force-dynamic";
 
 type CookSearchParams = {
   menu?: RouteParamValue;
+  mode?: RouteParamValue;
+  step?: RouteParamValue;
 };
 
 function NotebookSection({
@@ -70,6 +77,7 @@ export default async function CookPage({
   const { mealId } = await params;
   const routedMenu = await searchParams;
   const selectedMenu = firstRouteParam(routedMenu.menu);
+  const selectedMode = firstRouteParam(routedMenu.mode);
   const context = await requireFamilyContext(`/cook/${mealId}`);
   const canManage = canManagePlans(context.role);
   const llmSettings = await getUserLlmSettingsForDisplay(context.user.id);
@@ -138,6 +146,52 @@ export default async function CookPage({
     { menu: "rejection-pattern" },
     "rejection-pattern",
   );
+  const closeoutHref = closeoutMealHref(meal.dayPlan.week.id, meal.id);
+  const stepModeHref = cookStepHref(meal.id, 1);
+
+  if (selectedMode === "steps") {
+    return (
+      <AppShell family={context.family} role={context.role} user={context.user}>
+        <StepByStepCookMode
+          dateLabel={view.dateLabel}
+          initialStepNumber={Number(firstRouteParam(routedMenu.step) ?? "1")}
+          ingredients={view.ingredients}
+          mealId={meal.id}
+          normalHref={`/cook/${meal.id}`}
+          steps={view.steps}
+          title={view.title}
+          weekHref={view.weekHref}
+        >
+          {canManage ? (
+            <div className="ka-panel border border-[var(--line)]">
+              <h2 className="recipe-display text-2xl font-semibold text-[var(--ink)]">
+                Close out dinner
+              </h2>
+              <p className="mt-1 text-sm font-semibold leading-6 text-[var(--muted-ink)]">
+                Save the outcome now, or keep it open for later.
+              </p>
+              <div className="mt-4">
+                <MealOutcomeForm
+                  meal={meal}
+                  variant="compact"
+                  weekId={meal.dayPlan.week.id}
+                />
+              </div>
+              <div className="mt-3">
+                <SaveRecipeButton mealId={meal.id} />
+              </div>
+            </div>
+          ) : (
+            <MealVotePanel
+              currentUserId={context.user.id}
+              mealId={meal.id}
+              votes={meal.votes}
+            />
+          )}
+        </StepByStepCookMode>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -153,7 +207,7 @@ export default async function CookPage({
             </Link>
             <Link
               className="ka-button-secondary gap-2"
-              href={`/weeks/${meal.dayPlan.week.id}/closeout`}
+              href={closeoutHref}
             >
               Closeout
               <ClipboardList size={16} />
@@ -177,6 +231,13 @@ export default async function CookPage({
                   <ArrowRight size={16} />
                 </Link>
               ) : null}
+              <Link
+                className="ka-button-secondary gap-2"
+                href={stepModeHref}
+              >
+                Step mode
+                <ChefHat size={16} />
+              </Link>
             </div>
           </div>
 
@@ -326,6 +387,19 @@ export default async function CookPage({
                   mealId={meal.id}
                   modelLabel={llmSettings?.modelId}
                 />
+
+                {canManage ? (
+                <NotebookSection title="Quick Closeout" accent="tomato">
+                  <MealOutcomeForm
+                    meal={meal}
+                    variant="compact"
+                    weekId={meal.dayPlan.week.id}
+                  />
+                  <div className="mt-3">
+                    <SaveRecipeButton mealId={meal.id} />
+                  </div>
+                </NotebookSection>
+                ) : null}
 
                 {canManage ? (
                 <NotebookSection title="Feedback" accent="tomato">

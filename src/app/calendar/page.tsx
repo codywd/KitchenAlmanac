@@ -22,11 +22,13 @@ import { PageIntro } from "@/components/page-intro";
 import { Section } from "@/components/section";
 import {
   formatMoney,
+  formatDisplayDate,
   startOfMealPlanWeek,
   toDateOnly,
 } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import { buildQuickCloseoutPrompts } from "@/lib/quick-closeout";
 import { loadSetupStatus } from "@/lib/setup";
 import {
   buildWeekCommandCenterView,
@@ -269,6 +271,22 @@ export default async function CalendarPage({
     selectedWeek,
   });
   const nextAction = commandCenter.nextAction;
+  const quickCloseoutPrompts = selectedWeek
+    ? buildQuickCloseoutPrompts({
+        canManage,
+        days: selectedWeek.days.map((day) => ({
+          date: day.date,
+          meal: day.dinner
+            ? {
+                id: day.dinner.id,
+                name: day.dinner.name,
+                outcomeStatus: day.dinner.outcomeStatus,
+              }
+            : null,
+        })),
+        weekId: selectedWeek.id,
+      })
+    : [];
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -344,6 +362,49 @@ export default async function CalendarPage({
             </span>
           )}
         </section>
+
+        {quickCloseoutPrompts.length ? (
+          <Section
+            description="Current and past dinners that still need an outcome."
+            title="Quick Closeout"
+          >
+            <div className="ka-panel border border-[var(--line)]">
+              <div className="grid gap-3 lg:grid-cols-3">
+                {quickCloseoutPrompts.slice(0, 3).map((prompt) => (
+                  <Link
+                    className="group border border-[var(--line)] bg-[rgba(255,253,245,0.5)] p-4 transition hover:border-[var(--herb)]"
+                    href={prompt.href}
+                    key={prompt.mealId}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--muted-ink)]">
+                          {formatDisplayDate(new Date(`${prompt.date}T00:00:00.000Z`))}
+                        </p>
+                        <h3 className="mt-2 text-base font-black leading-6 text-[var(--ink)]">
+                          {prompt.mealName}
+                        </h3>
+                      </div>
+                      <ClipboardList
+                        className="shrink-0 text-[var(--tomato)] transition group-hover:translate-x-0.5"
+                        size={18}
+                      />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {quickCloseoutPrompts.length > 3 ? (
+                <Link
+                  className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-black text-[var(--herb-dark)]"
+                  href={`/weeks/${selectedWeek.id}/closeout`}
+                >
+                  Open all closeouts
+                  <ArrowRight size={15} />
+                </Link>
+              ) : null}
+            </div>
+          </Section>
+        ) : null}
 
         <div className="command-stat-grid">
           <div className="command-stat">

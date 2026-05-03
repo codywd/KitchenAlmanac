@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { refreshGroceryListFromCurrentMealsAction } from "./grocery-actions";
+import {
+  applySmartGroceryMergeAction,
+  refreshGroceryListFromCurrentMealsAction,
+} from "./grocery-actions";
 
 const actionState = vi.hoisted(() => ({
   context: {
@@ -71,8 +74,16 @@ function makeDb({
     },
     pantryStaple: {
       findMany: vi.fn(async () => []),
+      upsert: vi.fn(async (args: unknown) => ({
+        id: "staple_1",
+        args,
+      })),
+    },
+    shoppingItemState: {
+      findMany: vi.fn(async () => []),
     },
     week: {
+      findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => week),
     },
   };
@@ -233,5 +244,168 @@ describe("refreshGroceryListFromCurrentMealsAction", () => {
       "This week has no meal ingredients to refresh from.",
     );
     expect(db.groceryList.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("applySmartGroceryMergeAction", () => {
+  beforeEach(() => {
+    actionState.context.role = "OWNER";
+    actionState.db = makeDb().db;
+    actionState.revalidated = [];
+  });
+
+  it("forbids member users from applying smart grocery merge writes", async () => {
+    actionState.context.role = "MEMBER";
+
+    const data = formData();
+    data.append("addCanonicalName", "brown rice");
+
+    await expect(
+      applySmartGroceryMergeAction({}, data),
+    ).rejects.toThrow("Only family owners and admins can manage meal plans.");
+  });
+
+  it("applies selected grocery additions and pantry candidates for owners", async () => {
+    const db = makeDb({
+      week: {
+        ...defaultWeek,
+        days: [
+          {
+            date: new Date("2026-05-04T00:00:00.000Z"),
+            dinner: {
+              ingredients: [
+                { item: "chicken breasts", quantity: "2 lb" },
+                { item: "brown rice", quantity: "3 cup" },
+              ],
+              name: "Lemon Chicken",
+            },
+          },
+        ],
+        groceryList: {
+          sections: [
+            {
+              items: [{ item: "chicken breast", quantity: "2 pound" }],
+              name: "Imported",
+            },
+          ],
+        },
+      },
+    }).db;
+    db.week.findMany.mockResolvedValue([
+      {
+        groceryList: {
+          sections: [
+            {
+              items: [{ item: "whole milk", quantity: "1 gallon" }],
+              name: "Dairy",
+            },
+          ],
+        },
+      },
+      {
+        groceryList: {
+          sections: [
+            {
+              items: [{ item: "whole milk", quantity: "1 gallon" }],
+              name: "Dairy",
+            },
+          ],
+        },
+      },
+    ]);
+    db.shoppingItemState.findMany.mockResolvedValue([
+      {
+        canonicalName: "garlic",
+        itemName: "Garlic",
+        quantity: "1 head",
+        status: "ALREADY_HAVE",
+      },
+      {
+        canonicalName: "garlic",
+        itemName: "Garlic",
+        quantity: "1 head",
+        status: "ALREADY_HAVE",
+      },
+      {
+        canonicalName: "garlic",
+        itemName: "Garlic cloves",
+        quantity: null,
+        status: "ALREADY_HAVE",
+      },
+    ]);
+    actionState.db = db;
+    const data = formData();
+
+    data.append("addCanonicalName", "brown rice");
+    data.append("addCanonicalName", "milk");
+    data.append("pantryCandidateCanonicalName", "garlic");
+
+    const result = await applySmartGroceryMergeAction({}, data);
+
+    expect(db.groceryList.upsert).toHaveBeenCalledWith({
+      create: {
+        notes: "Smart merged from current plans and household history.",
+        sections: [
+          {
+            items: [{ item: "chicken breast", quantity: "2 pound" }],
+            name: "Imported",
+          },
+          {
+            items: [
+              { item: "brown rice", quantity: "3 cup" },
+              { item: "whole milk", quantity: "1 gallon" },
+            ],
+            name: "Smart additions",
+          },
+        ],
+        weekId: "week_1",
+      },
+      update: {
+        notes: "Smart merged from current plans and household history.",
+        sections: [
+          {
+            items: [{ item: "chicken breast", quantity: "2 pound" }],
+            name: "Imported",
+          },
+          {
+            items: [
+              { item: "brown rice", quantity: "3 cup" },
+              { item: "whole milk", quantity: "1 gallon" },
+            ],
+            name: "Smart additions",
+          },
+        ],
+      },
+      where: {
+        weekId: "week_1",
+      },
+    });
+    expect(db.pantryStaple.upsert).toHaveBeenCalledWith({
+      create: {
+        canonicalName: "garlic",
+        displayName: "Garlic",
+        familyId: "family_1",
+      },
+      update: {
+        active: true,
+        displayName: "Garlic",
+      },
+      where: {
+        familyId_canonicalName: {
+          canonicalName: "garlic",
+          familyId: "family_1",
+        },
+      },
+    });
+    expect(actionState.revalidated).toEqual([
+      "/ingredients",
+      "/weeks/week_1",
+      "/weeks/week_1/shopping",
+      "/weeks/week_1/review",
+    ]);
+    expect(result).toEqual({
+      message: "Applied 2 grocery addition suggestions and 1 pantry suggestion.",
+      weekId: "week_1",
+    });
   });
 });

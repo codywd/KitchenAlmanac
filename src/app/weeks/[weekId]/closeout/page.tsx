@@ -20,6 +20,7 @@ import { Section } from "@/components/section";
 import { addDays, formatDisplayDate, formatMoney, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
+import { firstRouteParam, type RouteParamValue } from "@/lib/routed-menu";
 import { buildWeekCloseout } from "@/lib/week-closeout";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +39,13 @@ function statusTone(outcomeStatus: string) {
 
 export default async function WeekCloseoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ weekId: string }>;
+  searchParams: Promise<{ mealId?: RouteParamValue }>;
 }) {
   const { weekId } = await params;
+  const selectedMealId = firstRouteParam((await searchParams).mealId);
   const context = await requireFamilyContext(`/weeks/${weekId}/closeout`);
   const canManage = canManagePlans(context.role);
   const week = await getDb().week.findFirst({
@@ -188,8 +192,16 @@ export default async function WeekCloseoutPage({
                 (slot) => toDateOnly(slot.date) === day.date,
               )?.meal;
 
+              const isSelected = Boolean(meal && meal.id === selectedMealId);
+
               return (
-                <article className="ka-card p-5" key={day.date}>
+                <article
+                  className={`ka-card scroll-mt-24 p-5 ${
+                    isSelected ? "ring-2 ring-[var(--tomato)] ring-offset-2 ring-offset-[var(--paper)]" : ""
+                  }`}
+                  id={meal ? `closeout-${meal.id}` : undefined}
+                  key={day.date}
+                >
                   <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
                     <div>
                       <div className="text-xs font-black uppercase tracking-[0.14em] text-[var(--muted-ink)]">

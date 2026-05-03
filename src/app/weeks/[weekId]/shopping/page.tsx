@@ -19,6 +19,7 @@ import { OnlineOnlySubmitButton } from "@/components/online-only-submit-button";
 import { PageIntro } from "@/components/page-intro";
 import { PantryStapleForm } from "@/components/pantry-staple-form";
 import { Section } from "@/components/section";
+import { SmartGroceryMergeForm } from "@/components/smart-grocery-merge-form";
 import { toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import {
@@ -28,6 +29,7 @@ import {
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
 import { aggregateIngredientsForWeek } from "@/lib/ingredients";
 import { buildShoppingItems, groupShoppingItems, type ShoppingItem } from "@/lib/shopping";
+import { buildSmartGrocerySuggestions } from "@/lib/smart-grocery";
 
 export const dynamic = "force-dynamic";
 
@@ -197,15 +199,44 @@ export default async function ShoppingPage({
     notFound();
   }
 
-  const pantryStaples = await getDb().pantryStaple.findMany({
-    orderBy: {
-      displayName: "asc",
-    },
-    where: {
-      active: true,
-      familyId: context.family.id,
-    },
-  });
+  const [pantryStaples, recentWeeks, familyShoppingItemStates] =
+    await Promise.all([
+      getDb().pantryStaple.findMany({
+        orderBy: {
+          displayName: "asc",
+        },
+        where: {
+          active: true,
+          familyId: context.family.id,
+        },
+      }),
+      getDb().week.findMany({
+        include: {
+          groceryList: true,
+        },
+        orderBy: {
+          weekStart: "desc",
+        },
+        take: 8,
+        where: {
+          familyId: context.family.id,
+          id: {
+            not: week.id,
+          },
+        },
+      }),
+      getDb().shoppingItemState.findMany({
+        select: {
+          canonicalName: true,
+          itemName: true,
+          quantity: true,
+          status: true,
+        },
+        where: {
+          familyId: context.family.id,
+        },
+      }),
+    ]);
   const ingredients = aggregateIngredientsForWeek(
     week.days
       .filter((day) => day.dinner)
@@ -235,6 +266,15 @@ export default async function ShoppingPage({
     storedSections,
   });
   const groups = groupShoppingItems(items);
+  const smartGrocerySuggestions = buildSmartGrocerySuggestions({
+    derivedSections,
+    pantryStaples,
+    recentGrocerySections: recentWeeks.map((recentWeek) =>
+      readGrocerySections(recentWeek.groceryList?.sections),
+    ),
+    shoppingItemStates: familyShoppingItemStates,
+    storedSections,
+  });
 
   return (
     <AppShell family={context.family} role={context.role} user={context.user}>
@@ -270,6 +310,20 @@ export default async function ShoppingPage({
           initialItems={items}
           weekId={week.id}
         />
+
+        {canManage ? (
+          <Section
+            description="Review suggested additions before updating the stored grocery list or pantry defaults."
+            title="Smart Grocery Merge"
+          >
+            <div className="ka-panel border border-[var(--line)]">
+              <SmartGroceryMergeForm
+                suggestions={smartGrocerySuggestions}
+                weekId={week.id}
+              />
+            </div>
+          </Section>
+        ) : null}
 
         <noscript>
           <div className="grid gap-3 md:grid-cols-3">
