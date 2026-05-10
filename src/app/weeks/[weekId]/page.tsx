@@ -1,4 +1,10 @@
-import { ChefHat, ClipboardCheck, ClipboardList, ShoppingCart } from "lucide-react";
+import {
+  ChefHat,
+  ClipboardCheck,
+  ClipboardList,
+  Printer,
+  ShoppingCart,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -176,6 +182,10 @@ export default async function WeekDetailPage({
             <Link className="ka-button-secondary gap-2" href={`/weeks/${week.id}/closeout`}>
               Closeout
               <ClipboardList size={16} />
+            </Link>
+            <Link className="ka-button-secondary gap-2" href={`/weeks/${week.id}/menu`}>
+              Print menu
+              <Printer size={16} />
             </Link>
           </div>
         }

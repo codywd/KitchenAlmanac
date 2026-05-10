@@ -27,6 +27,14 @@ describe("parseJsonWithRepair", () => {
     expect(result.value).toEqual({ note: "Serve “as-is” tonight." });
   });
 
+  it("marks valid JSON with outer whitespace as repaired", () => {
+    const result = parseJsonWithRepair('\n{"recipes":[]}\n');
+
+    expect(result.repaired).toBe(true);
+    expect(result.text).toBe('{"recipes":[]}');
+    expect(result.value).toEqual({ recipes: [] });
+  });
+
   it("strips markdown fences and trailing commas", () => {
     const result = parseJsonWithRepair(
       '```json\n{"recipes":[{"dinner_title":"Turkey Bowls",}],}\n```',

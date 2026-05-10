@@ -224,7 +224,7 @@ export function parseJsonWithRepair<T = unknown>(input: string): JsonRepairResul
   for (const candidate of candidates) {
     try {
       return {
-        repaired: candidate !== normalized,
+        repaired: candidate !== input,
         text: candidate,
         value: JSON.parse(candidate) as T,
       };

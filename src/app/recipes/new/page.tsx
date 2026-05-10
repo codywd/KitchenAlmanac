@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PageIntro } from "@/components/page-intro";
 import { SavedRecipeCreateForm } from "@/components/saved-recipe-edit-form";
+import { SavedRecipeJsonImportForm } from "@/components/saved-recipe-json-import-form";
 import { Section } from "@/components/section";
 import { canManagePlans, requireFamilyContext } from "@/lib/family";
 
@@ -26,19 +27,26 @@ export default async function NewRecipePage() {
           eyebrow="Recipe library"
           title="New Recipe"
         >
-          Add a household recipe manually with structured ingredients, tags, and
-          planning flags.
+          Add a household recipe from structured JSON or manual fields with
+          ingredients, tags, and planning flags.
         </PageIntro>
 
-        <Section title={canManage ? "Recipe Details" : "Owner/Admin Only"}>
-          {canManage ? (
-            <SavedRecipeCreateForm />
-          ) : (
+        {canManage ? (
+          <>
+            <Section title="Import Structured JSON">
+              <SavedRecipeJsonImportForm />
+            </Section>
+            <Section title="Manual Recipe Details">
+              <SavedRecipeCreateForm />
+            </Section>
+          </>
+        ) : (
+          <Section title="Owner/Admin Only">
             <p className="text-sm font-semibold leading-6 text-[var(--muted-ink)]">
               Ask a family owner or admin to add recipes to the household cookbook.
             </p>
-          )}
-        </Section>
+          </Section>
+        )}
       </div>
     </AppShell>
   );
