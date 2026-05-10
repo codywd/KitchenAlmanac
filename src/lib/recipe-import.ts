@@ -128,6 +128,36 @@ export const importedMealPlanSchema = z
 type ImportedMealPlan = z.infer<typeof importedMealPlanSchema>;
 type ImportedRecipe = z.infer<typeof importedRecipeSchema>;
 
+function passthroughString(recipe: ImportedRecipe, key: string) {
+  const value = (recipe as Record<string, unknown>)[key];
+
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function normalizedTags(tags?: string[]) {
+  const normalized = (tags ?? [])
+    .map((tag) => tag.trim().replace(/\s+/g, " ").toLowerCase())
+    .filter(Boolean);
+
+  return [...new Set(normalized)];
+}
+
+function importedRecipeSourceUrl(recipe: ImportedRecipe) {
+  const sourceUrl =
+    passthroughString(recipe, "source_url") ??
+    passthroughString(recipe, "sourceUrl");
+
+  if (!sourceUrl) {
+    return undefined;
+  }
+
+  try {
+    return new URL(sourceUrl).toString();
+  } catch {
+    throw new Error("Source URL must be a valid URL.");
+  }
+}
+
 const dayIndexes = new Map([
   ["sunday", 6],
   ["monday", 0],
@@ -281,6 +311,48 @@ export function normalizeImportedRecipe({
       validationNotes: validationNotes(parsed),
       weeknightTimeSafe:
         typeof totalMinutes === "number" ? totalMinutes <= 45 : false,
+    },
+  };
+}
+
+export function normalizeImportedSavedRecipe({
+  recipe,
+}: {
+  recipe: unknown;
+}) {
+  const parsed = importedRecipeSchema.parse(recipe);
+  const normalized = normalizeImportedRecipe({
+    date: new Date("1970-01-01T00:00:00.000Z"),
+    recipe: parsed,
+  });
+
+  if (!normalized.meal.ingredients.length) {
+    throw new Error("Add at least one ingredient.");
+  }
+
+  return {
+    active: true,
+    batchPrepNote: normalized.meal.batchPrepNote,
+    costEstimateCents: normalized.meal.costEstimateCents,
+    cuisine: passthroughString(parsed, "cuisine"),
+    ingredients: normalized.meal.ingredients,
+    kidAdaptations: normalized.meal.kidAdaptations,
+    methodSteps: normalized.meal.methodSteps,
+    name: normalized.meal.name,
+    prepTimeActiveMinutes: normalized.meal.prepTimeActiveMinutes,
+    prepTimeTotalMinutes: normalized.meal.prepTimeTotalMinutes,
+    servings: normalized.meal.servings,
+    sourceRecipe: normalized.meal.sourceRecipe,
+    sourceUrl: importedRecipeSourceUrl(parsed),
+    tags: normalizedTags(parsed.tags),
+    validation: {
+      budgetFit: normalized.meal.budgetFit,
+      diabetesFriendly: normalized.meal.diabetesFriendly,
+      heartHealthy: normalized.meal.heartHealthy,
+      kidFriendly: normalized.meal.kidFriendly,
+      noFishSafe: normalized.meal.noFishSafe,
+      validationNotes: normalized.meal.validationNotes,
+      weeknightTimeSafe: normalized.meal.weeknightTimeSafe,
     },
   };
 }

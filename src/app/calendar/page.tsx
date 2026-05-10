@@ -11,6 +11,7 @@ import {
   ClipboardList,
   ListChecks,
   NotebookPen,
+  Printer,
   Rocket,
   ShoppingCart,
 } from "lucide-react";
@@ -482,6 +483,10 @@ export default async function CalendarPage({
                 <Link className="command-tool-link" href={`/weeks/${commandCenter.selectedWeek.id}/closeout`}>
                   <ClipboardList size={18} />
                   Closeout
+                </Link>
+                <Link className="command-tool-link" href={`/weeks/${commandCenter.selectedWeek.id}/menu`}>
+                  <Printer size={18} />
+                  Print menu
                 </Link>
                 <Link className="command-tool-link" href="/meal-memory">
                   <Brain size={18} />

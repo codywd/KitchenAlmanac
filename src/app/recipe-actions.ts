@@ -6,6 +6,9 @@ import { revalidatePath } from "next/cache";
 import { addDays, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { getDb } from "@/lib/db";
 import { assertCanManagePlans, requireFamilyContext } from "@/lib/family";
+import { parseJsonWithRepair } from "@/lib/json-repair";
+import { normalizeImportedSavedRecipe } from "@/lib/recipe-import";
+import { createSavedRecipeForFamily } from "@/lib/saved-recipe-api";
 import { parseSavedRecipeFormData } from "@/lib/saved-recipe-form";
 import {
   buildSavedRecipeDataFromMeal,
@@ -181,6 +184,42 @@ export async function createSavedRecipeAction(
     message: `Created ${data.name}.`,
     recipeId: recipe.id,
   };
+}
+
+export async function importSavedRecipeJsonAction(
+  _previousState: SavedRecipeActionState,
+  formData: FormData,
+): Promise<SavedRecipeActionState> {
+  const context = await requireFamilyContext("/recipes/new");
+  assertCanManagePlans(context.role);
+  const recipeJson = text(formData, "recipeJson");
+
+  if (!recipeJson) {
+    return {
+      error: "Paste structured recipe JSON before importing.",
+    };
+  }
+
+  try {
+    const parsed = parseJsonWithRepair(recipeJson).value;
+    const payload = normalizeImportedSavedRecipe({ recipe: parsed });
+    const recipe = await createSavedRecipeForFamily({
+      familyId: context.family.id,
+      payload,
+      userId: context.user.id,
+    });
+
+    revalidateRecipeSurfaces();
+
+    return {
+      message: `Imported ${payload.name}.`,
+      recipeId: recipe.id,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not import recipe.",
+    };
+  }
 }
 
 export async function updateSavedRecipeAction(

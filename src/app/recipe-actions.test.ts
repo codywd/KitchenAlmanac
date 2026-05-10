@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   archiveSavedRecipeAction,
   createSavedRecipeAction,
+  importSavedRecipeJsonAction,
   replaceDinnerFromSavedRecipeAction,
   saveMealToRecipeLibraryAction,
   updateSavedRecipeAction,
@@ -241,6 +242,85 @@ describe("recipe library actions", () => {
       message: "Created Manual Rice.",
       recipeId: "recipe_1",
     });
+  });
+
+  it("imports one structured recipe JSON into the recipe library", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    const result = await importSavedRecipeJsonAction(
+      {},
+      formData({
+        recipeJson: `\`\`\`json
+{
+  "dinner_title": "Chicken Taco Rice Skillet",
+  "source_url": "https://example.com/chicken-taco-rice",
+  "ingredients": [
+    { "name": "boneless chicken thighs", "amount": 1.5, "unit": "lb" },
+  ],
+  "instructions": [
+    { "step": 2, "text": "Simmer with rice until tender." },
+    { "step": 1, "text": "Brown the chicken." },
+  ],
+  "servings": 6,
+  "tags": ["Weeknight", "weeknight"]
+}
+\`\`\``,
+      }),
+    );
+
+    expect(db.savedRecipe.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        active: true,
+        createdByUserId: "user_owner",
+        familyId: "family_1",
+        ingredients: [
+          expect.objectContaining({
+            item: "boneless chicken thighs",
+            quantity: "1.5 lb",
+          }),
+        ],
+        methodSteps: ["Brown the chicken.", "Simmer with rice until tender."],
+        name: "Chicken Taco Rice Skillet",
+        sourceRecipe: expect.objectContaining({
+          dinner_title: "Chicken Taco Rice Skillet",
+        }),
+        sourceUrl: "https://example.com/chicken-taco-rice",
+        tags: ["weeknight"],
+        updatedByUserId: "user_owner",
+      }),
+    });
+    expect(result).toEqual({
+      message: "Imported Chicken Taco Rice Skillet.",
+      recipeId: "recipe_1",
+    });
+    expect(actionState.revalidated).toEqual(
+      expect.arrayContaining(["/meal-memory", "/planner", "/recipes"]),
+    );
+  });
+
+  it("creates a new imported recipe even when the title already exists", async () => {
+    const { db } = makeDb();
+    actionState.db = db;
+
+    await importSavedRecipeJsonAction(
+      {},
+      formData({
+        recipeJson: JSON.stringify({
+          dinner_title: "Turkey Rice Bowls",
+          ingredients: [{ name: "rice", amount: 2, unit: "cups" }],
+        }),
+      }),
+    );
+
+    expect(db.savedRecipe.findFirst).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          name: "Turkey Rice Bowls",
+        }),
+      }),
+    );
+    expect(db.savedRecipe.create).toHaveBeenCalledTimes(1);
   });
 
   it("updates the existing saved recipe instead of duplicating a source meal", async () => {

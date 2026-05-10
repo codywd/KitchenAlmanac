@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeImportedMealPlan, normalizeImportedRecipe } from "./recipe-import";
+import {
+  normalizeImportedMealPlan,
+  normalizeImportedRecipe,
+  normalizeImportedSavedRecipe,
+} from "./recipe-import";
 
 const samplePlan = {
   schema_version: "1.0",
@@ -98,6 +102,95 @@ const samplePlan = {
 };
 
 describe("recipe import normalization", () => {
+  it("normalizes one structured recipe into saved recipe create data", () => {
+    const normalized = normalizeImportedSavedRecipe({
+      recipe: {
+        cuisine: "Tex-Mex",
+        dinner_title: "Chicken Taco Rice Skillet",
+        estimated_cost_usd: 18.75,
+        health_adjustment: {
+          plate_build: "Serve with extra peppers and beans.",
+          why_it_helps: ["Adds fiber."],
+        },
+        ingredients: [
+          {
+            amount: 1.5,
+            name: "boneless chicken thighs",
+            pantry_item: false,
+            preparation: "bite-size pieces",
+            unit: "lb",
+          },
+        ],
+        instructions: [
+          { step: 2, text: "Simmer with rice until tender." },
+          { step: 1, text: "Brown the chicken." },
+        ],
+        kid_friendly_variation: {
+          notes: ["Keep toppings separate."],
+          strategy: "Serve as a build-your-own bowl.",
+        },
+        leftovers: {
+          reuse_ideas: ["Roll into burritos."],
+          storage: "Refrigerate up to 4 days.",
+        },
+        servings: 6,
+        source_url: "https://example.com/chicken-taco-rice",
+        tags: ["Weeknight", "Kid Friendly", "weeknight"],
+        time: {
+          prep_minutes: 15,
+          total_minutes: 40,
+        },
+        why_this_works: "One-pan dinner with familiar flavors.",
+      },
+    });
+
+    expect(normalized).toMatchObject({
+      active: true,
+      costEstimateCents: 1875,
+      cuisine: "Tex-Mex",
+      ingredients: [
+        {
+          item: "boneless chicken thighs",
+          pantryItem: false,
+          preparation: "bite-size pieces",
+          quantity: "1.5 lb",
+        },
+      ],
+      methodSteps: ["Brown the chicken.", "Simmer with rice until tender."],
+      name: "Chicken Taco Rice Skillet",
+      prepTimeActiveMinutes: 15,
+      prepTimeTotalMinutes: 40,
+      servings: 6,
+      sourceUrl: "https://example.com/chicken-taco-rice",
+      tags: ["weeknight", "kid friendly"],
+      validation: {
+        diabetesFriendly: true,
+        heartHealthy: true,
+        kidFriendly: true,
+        noFishSafe: true,
+        weeknightTimeSafe: true,
+      },
+    });
+    expect(normalized.sourceRecipe).toMatchObject({
+      dinner_title: "Chicken Taco Rice Skillet",
+      source_url: "https://example.com/chicken-taco-rice",
+    });
+    expect(normalized.validation.validationNotes).toContain(
+      "One-pan dinner with familiar flavors.",
+    );
+  });
+
+  it("rejects a single recipe import without ingredients", () => {
+    expect(() =>
+      normalizeImportedSavedRecipe({
+        recipe: {
+          dinner_title: "Sauce Night",
+          ingredients: [],
+        },
+      }),
+    ).toThrow("Add at least one ingredient.");
+  });
+
   it("normalizes a single outside-LLM recipe for a forced swap date", () => {
     const normalized = normalizeImportedRecipe({
       budgetTargetUsd: 25,

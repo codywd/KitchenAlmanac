@@ -50,7 +50,7 @@ export function RecipeImportForm({
         weekStart: parsedWeekStart,
       });
 
-      if (parsed.repaired) {
+      if (nextPlanJson !== planJson) {
         setPlanJson(nextPlanJson);
       }
 
